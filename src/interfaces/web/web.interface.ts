@@ -5,9 +5,10 @@ import { existsSync } from 'fs';
 import { resolve } from 'path';
 import { randomBytes, createHmac, timingSafeEqual } from 'crypto';
 import cors from 'cors';
+import { getPool } from '../../storage/pg-pool.ts';
 import { logger } from '../../utils/logger.ts';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware.ts';
-import { verifyToken } from './middleware/auth.middleware.ts';
+import { requireAuth, verifyToken } from './middleware/auth.middleware.ts';
 import { demoGuard } from './middleware/demo.middleware.ts';
 import type { IUserInterface, InterfaceConfig, InterfaceCapabilities, Message, MessageResult, UserAction } from '../shared/interface-manager.ts';
 
@@ -134,26 +135,39 @@ export class WebInterface implements IUserInterface {
     const { default: apiRouter } = await import('./routes/index.ts');
     this.app.use('/api', rateLimitMiddleware('api_calls'), demoGuard, apiRouter);
 
-    // Gmail OAuth: generate a CSRF state token, store accountId against it
-    this.app.get('/auth/gmail/start', rateLimitMiddleware('auth_attempts'), (req, res) => {
-      const accountId = req.query.accountId as string;
-      if (!accountId) { res.status(400).json({ error: 'accountId required' }); return; }
-
-      const state = randomBytes(32).toString('hex');
-      this.oauthStates.set(state, { accountId, expiresAt: Date.now() + 10 * 60 * 1000 });
-
-      import('../../ingestion/gmail-webhook.ts').then(({ GmailWebhook }) => {
-        const gmail = new GmailWebhook(() => Promise.resolve());
-        const authUrl = gmail.getAuthUrl(state);
-        if (!authUrl.startsWith('https://accounts.google.com/')) {
-          res.status(500).send('Unexpected OAuth URL — cannot redirect');
+    this.app.post('/auth/gmail/start', requireAuth, rateLimitMiddleware('auth_attempts'), demoGuard, async (req, res) => {
+      const { accountId } = req.body ?? {};
+      if (typeof accountId !== 'string' || !accountId) {
+        res.status(400).json({ error: '缺少邮箱账号 ID' });
+        return;
+      }
+      try {
+        const { rowCount } = await getPool().query(
+          "SELECT 1 FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'gmail' AND enabled = TRUE",
+          [accountId, (req as Request & { user: { sub: string } }).user.sub],
+        );
+        if (!rowCount) {
+          res.status(404).json({ error: '找不到可授权的 Gmail 账号' });
           return;
         }
-        res.redirect(authUrl);
-      }).catch((err) => {
+        if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REDIRECT_URI) {
+          res.status(503).json({ error: '服务器尚未配置 Google OAuth 凭据' });
+          return;
+        }
+        const { GmailWebhook } = await import('../../ingestion/gmail-webhook.ts');
+        const gmail = new GmailWebhook(() => Promise.resolve());
+        const now = Date.now();
+        for (const [key, entry] of this.oauthStates) {
+          if (entry.expiresAt <= now) this.oauthStates.delete(key);
+        }
+        const state = randomBytes(32).toString('hex');
+        const url = gmail.getAuthUrl(state);
+        this.oauthStates.set(state, { accountId, expiresAt: now + 10 * 60 * 1000 });
+        res.json({ url });
+      } catch (err) {
         logger.error('Gmail OAuth start failed', { err });
-        res.status(500).send('Could not start OAuth flow');
-      });
+        res.status(500).json({ error: '无法启动 Gmail 授权' });
+      }
     });
 
     // Gmail OAuth callback — verify CSRF state and persist tokens

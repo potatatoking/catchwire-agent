@@ -16,6 +16,15 @@
 - 本分支集中于界面本地化，IMAP 实际收信、DeepSeek 调用及附件扫描未包含在此次发布验证中。
 - 前端生产构建和 Debian 服务健康检查通过。当前隔离环境下 `npm test` 为 35 项通过、23 项失败，结果与原版基线一致。测试失败主要涉及邮件处理、调度及 Webhook 等后端模块。 上游仓库缺少 ESLint 配置，因此 `npm run lint` 无法完成。
 
+## Gmail OAuth
+
+1. 在 Google Cloud 项目中启用 Gmail API，创建类型为「Web 应用」的 OAuth 客户端。如果应用处于测试模式，把要连接的 Gmail 地址添加为测试用户。
+2. 在 Google Cloud 的「已获授权的重定向 URI」和 Catchwire 的 `GMAIL_REDIRECT_URI` 中填写同一个地址。回调路径是 `/auth/gmail/callback`。例如，通过本机 13000 端口访问时，填写 `http://127.0.0.1:13000/auth/gmail/callback`。
+3. 在服务器的私有 `.env` 中填写 `GMAIL_CLIENT_ID`、`GMAIL_CLIENT_SECRET` 和 `GMAIL_REDIRECT_URI`，然后重启 Catchwire。请勿提交 `.env` 或客户端密钥。
+4. 登录 Catchwire，在设置中添加 Gmail 类型的邮箱，再点该账号旁的「OAuth」，在 Google 页面确认授权。
+
+OAuth 启动接口要求登录，并检查 Gmail 账号归属。本次验证覆盖授权链接生成和未登录请求拦截。Gmail 自动收信还需要配置和验证 Pub/Sub，授权本身不会启动收信。
+
 ## 许可证
 
 保留上游 [Apache-2.0 许可证](LICENSE) 和版权声明。修改过的文件包含简体中文改动说明。上游项目的安装与部署说明见 [原版 README](README.md)。

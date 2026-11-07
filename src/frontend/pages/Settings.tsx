@@ -188,13 +188,21 @@ export function Settings() {
                   <div style="font-size:11px;color:var(--text-muted)">{a.provider}</div>
                 </div>
                 {a.provider === 'gmail' && (
-                  <a href={`/api/auth/gmail/start?accountId=${a.account_id}`}
+                  <button type="button" onClick={async (event) => {
+                    event.stopPropagation();
+                    try {
+                      const { url } = await api.auth.startGmail(a.account_id);
+                      window.location.assign(url);
+                    } catch (error) {
+                      window.alert(error instanceof Error ? error.message : 'Gmail 授权失败');
+                    }
+                  }}
                     class="btn btn-outline"
                     style="height:26px;font-size:11px;padding:0 10px;text-decoration:none"
                     title="授权连接 Gmail">
                     <span class="material-symbols-rounded" style="font-size:13px">link</span>
                     OAuth
-                  </a>
+                  </button>
                 )}
                 {a.account_id === selectedAccount.value && (
                   <span class="material-symbols-rounded" style="font-size:16px;color:var(--accent)">check_circle</span>

@@ -88,7 +88,8 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
       if (type.value === 'gmail') {
         // Save account id so we return to step 2 after OAuth
         localStorage.setItem(ONBOARDING_KEY, acc.account_id);
-        window.location.href = `/api/auth/gmail/start?accountId=${acc.account_id}`;
+        const { url } = await api.auth.startGmail(acc.account_id);
+        window.location.assign(url);
       } else {
         onNext(acc.account_id);
       }

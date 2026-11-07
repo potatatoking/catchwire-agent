@@ -26,14 +26,14 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-async function req<T>(path: string, options?: RequestInit): Promise<T> {
+async function req<T>(path: string, options?: RequestInit, base = BASE): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const res = await fetch(`${BASE}${path}`, { headers, ...options });
+  const res = await fetch(`${base}${path}`, { headers, ...options });
 
   if (res.status === 401) {
     clearToken();
@@ -190,6 +190,9 @@ export interface Persona {
 
 export const api = {
   auth: {
+    startGmail: (accountId: string) => req<{ url: string }>('/auth/gmail/start', {
+      method: 'POST', body: JSON.stringify({ accountId }),
+    }, ''),
     setupStatus: () => req<{ needsSetup: boolean; setupDone: boolean }>('/auth/setup-status'),
     setup: (username: string, password: string) =>
       req<{ token: string; userId: string }>('/auth/setup', {
