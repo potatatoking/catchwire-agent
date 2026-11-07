@@ -68,8 +68,11 @@ export function AccountSwitcher() {
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface-2)">
             <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px">当前登录</div>
             <div style="font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              {current.email_address}
+              {current.display_name || current.email_address}
             </div>
+            {current.display_name && current.display_name !== current.email_address && (
+              <div style="font-size:11px;color:var(--text-muted)">{current.email_address}</div>
+            )}
             <div style="font-size:11px;color:var(--text-muted);margin-top:1px">{current.provider}</div>
           </div>
 
@@ -84,6 +87,7 @@ export function AccountSwitcher() {
                 .map(acc => (
                   <button
                     key={acc.account_id}
+                    title={acc.email_address}
                     onClick={() => { selectedAccount.value = acc.account_id; open.value = false; }}
                     style="
                       display:flex;align-items:center;gap:10px;
@@ -100,7 +104,7 @@ export function AccountSwitcher() {
                       display:flex;align-items:center;justify-content:center;flex-shrink:0;
                     `}>{acc.email_address[0].toUpperCase()}</span>
                     <span style="font-size:12px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                      {acc.email_address}
+                      {acc.display_name || acc.email_address}
                     </span>
                   </button>
                 ))}

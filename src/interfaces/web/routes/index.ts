@@ -69,11 +69,32 @@ router.get('/accounts', async (req, res) => {
   try {
     const userId = (req as any).user?.sub;
     const { rows } = await getPool().query(
-      `SELECT id AS account_id, email_address, account_type AS provider
+      `SELECT id AS account_id, email_address, display_name, account_type AS provider
        FROM email_accounts WHERE enabled = TRUE AND user_id = $1 ORDER BY created_at ASC`,
       [userId]
     );
     res.json(rows);
+  } catch {
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+router.patch('/accounts/:id', async (req, res) => {
+  const { display_name } = req.body ?? {};
+  if (typeof display_name !== 'string' || display_name.trim().length > 100) {
+    res.status(400).json({ error: '显示名称必须是不超过 100 个字符的文字' });
+    return;
+  }
+  try {
+    const userId = (req as any).user?.sub;
+    const { rows } = await getPool().query(
+      `UPDATE email_accounts SET display_name = $1
+       WHERE id = $2 AND user_id = $3 AND enabled = TRUE
+       RETURNING id AS account_id, email_address, display_name, account_type AS provider`,
+      [display_name.trim() || null, req.params.id, userId],
+    );
+    if (!rows.length) { res.status(404).json({ error: '邮箱账号不存在' }); return; }
+    res.json(rows[0]);
   } catch {
     res.status(500).json({ error: 'Internal error' });
   }

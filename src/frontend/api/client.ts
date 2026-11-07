@@ -103,6 +103,7 @@ export interface Account {
   account_id:    string;
   email_address: string;
   provider:      string;
+  display_name?: string | null;
 }
 
 export interface Stats {
@@ -206,6 +207,9 @@ export const api = {
   },
 
   accounts: {
+    rename: (id: string, displayName: string) => req<Account>(`/accounts/${encodeURIComponent(id)}`, {
+      method: 'PATCH', body: JSON.stringify({ display_name: displayName }),
+    }),
     list:   () => req<Account[]>('/accounts'),
     stats:  (id: string) => req<Stats>(`/accounts/${id}/stats`),
     persona: (id: string) => req<Persona>(`/accounts/${id}/persona`),

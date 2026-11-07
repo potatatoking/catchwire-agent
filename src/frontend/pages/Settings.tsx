@@ -3,7 +3,7 @@ import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { selectedAccount, accounts } from '../signals/store.ts';
-import { api } from '../api/client.ts';
+import { api, type Account } from '../api/client.ts';
 
 const LLM_PROVIDERS = [
   { id: 'grok',       label: 'Grok (xAI)',  placeholder: 'xai-...' },
@@ -52,6 +52,28 @@ export function Settings() {
   const smtpPort        = useSignal(2525);
   const apiBaseUrl      = useSignal('');
   const copiedField     = useSignal('');
+
+  const renameAccount = useSignal<Account | null>(null);
+  const displayName = useSignal('');
+  const savingName = useSignal(false);
+  const renameError = useSignal('');
+
+  async function saveDisplayName(event: Event) {
+    event.preventDefault();
+    const account = renameAccount.value;
+    if (!account || savingName.value) return;
+    savingName.value = true;
+    renameError.value = '';
+    try {
+      const updated = await api.accounts.rename(account.account_id, displayName.value);
+      accounts.value = accounts.value.map((item) => item.account_id === updated.account_id ? updated : item);
+      renameAccount.value = null;
+    } catch (error) {
+      renameError.value = error instanceof Error ? error.message : '无法保存显示名称';
+    } finally {
+      savingName.value = false;
+    }
+  }
 
   const showAddAcc  = useSignal(false);
   const newEmail    = useSignal('');
@@ -184,9 +206,19 @@ export function Settings() {
                 `}>
                 <span class="material-symbols-rounded" style="color:var(--accent);font-size:18px">email</span>
                 <div style="flex:1">
-                  <div style="font-size:13px;font-weight:600">{a.email_address}</div>
+                  <div style="font-size:13px;font-weight:600">{a.display_name || a.email_address}</div>
+                  {a.display_name && a.display_name !== a.email_address && (
+                    <div style="font-size:11px;color:var(--text-muted)">{a.email_address}</div>
+                  )}
                   <div style="font-size:11px;color:var(--text-muted)">{a.provider}</div>
                 </div>
+                <button type="button" class="btn btn-outline" disabled={savingName.value}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    renameAccount.value = a;
+                    displayName.value = a.display_name === a.email_address ? '' : a.display_name ?? '';
+                    renameError.value = '';
+                  }}>改名</button>
                 {a.provider === 'gmail' && (
                   <button type="button" onClick={async (event) => {
                     event.stopPropagation();
@@ -215,6 +247,24 @@ export function Settings() {
               添加邮箱
             </button>
           </div>
+
+          {renameAccount.value && (
+            <form class="card" style="margin-bottom:16px" onSubmit={saveDisplayName}>
+              <label class="field-label" for="account-display-name">显示名称 · {renameAccount.value.email_address}</label>
+              <input id="account-display-name" class="md-input" value={displayName.value}
+                maxLength={100} disabled={savingName.value}
+                placeholder="留空则显示邮箱地址"
+                onInput={(event) => { displayName.value = event.currentTarget.value; }} />
+              {renameError.value && <p role="alert">{renameError.value}</p>}
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button type="submit" class="btn btn-primary" disabled={savingName.value}>
+                  {savingName.value ? '保存中…' : '保存'}
+                </button>
+                <button type="button" class="btn btn-ghost" disabled={savingName.value}
+                  onClick={() => { renameAccount.value = null; }}>取消</button>
+              </div>
+            </form>
+          )}
 
           {showAddAcc.value && (
             <div class="card" style="margin-bottom:16px">
