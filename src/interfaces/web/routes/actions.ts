@@ -191,7 +191,7 @@ router.get('/accounts/:id/smtp', async (req, res) => {
     if (!rows.length) { res.status(404).json({ error: '找不到 IMAP 邮箱' }); return; }
     const encrypted = rows[0].credentials_enc;
     const credentials: SmtpCredentials = encrypted ? JSON.parse(new Encryption(process.env.ENCRYPTION_KEY!).decrypt(encrypted)) : {};
-    res.json({ host: credentials.smtp_host ?? '', port: credentials.smtp_port ?? 587, user: credentials.smtp_user ?? '', hasPassword: Boolean(credentials.smtp_pass) });
+    res.json({ host: credentials.smtp_host ?? '', port: credentials.smtp_port ?? 587, user: credentials.smtp_user ?? '', hasPassword: Boolean(credentials.smtp_pass), aliases: credentials.smtp_aliases ?? [] });
   } catch {
     res.status(500).json({ error: 'Internal error' });
   }
@@ -199,7 +199,7 @@ router.get('/accounts/:id/smtp', async (req, res) => {
 
 router.patch('/accounts/:id/smtp', async (req, res) => {
   const smtp = smtpSettingsSchema.safeParse(req.body);
-  if (!smtp.success) { res.status(400).json({ error: '请填写有效的 SMTP 服务器域名、端口和用户名' }); return; }
+  if (!smtp.success) { res.status(400).json({ error: '请检查 SMTP 域名、端口、用户名和别名格式' }); return; }
   try {
     const pool = getPool();
     const userId = (req as any).user.sub;

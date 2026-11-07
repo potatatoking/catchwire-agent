@@ -52,7 +52,7 @@ function EmailRow({ email, selected, source, onClick }: {
       <div class="email-row-body">
         <div class="email-row-sender">{email.sender_name || email.from_address}</div>
         <div class="email-row-subject">{email.subject}</div>
-        {source && <div class="email-row-preview">来源：{source}</div>}
+        {source && <div class="mailbox-source" title={source}>{source}</div>}
         {email.summary && <div class="email-row-preview">{email.summary}</div>}
       </div>
       <div class="email-row-meta">
@@ -95,6 +95,25 @@ function ReplyCard({ reply, onSend, onEdit, isSending }: {
 // ── Detail Panel ───────────────────────────────────────────────────────────
 
 function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | null; readOnly: boolean; onDone: () => void; onBack?: () => void }) {
+  const fromAddress = useSignal('');
+  const aliases = useSignal<string[]>([]);
+  const mailAccount = accounts.value.find((account) => account.account_id === email?.account_id);
+
+  useEffect(() => {
+    fromAddress.value = '';
+  }, [email?.id]);
+
+  useEffect(() => {
+    aliases.value = [];
+    if (readOnly || mailAccount?.provider !== 'imap') return;
+    let active = true;
+    api.accounts.smtp(mailAccount.account_id).then((settings) => {
+      if (active) aliases.value = (settings.aliases ?? []).filter((alias) =>
+        alias.toLowerCase() !== mailAccount.email_address.toLowerCase());
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [mailAccount?.account_id, readOnly]);
+
   const editIdx     = useSignal<number | null>(null);
   const editBody    = useSignal('');
   const sending     = useSignal(false);
@@ -161,8 +180,7 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
     sending.value  = true;
     resultMsg.value = '';
     try {
-      await api.emails.reply(email.id, body);
-      await api.actions.send(email.id);
+      await api.emails.reply(email.id, body, fromAddress.value || undefined);
       resultMsg.value = 'sent';
       onDone();
     } catch (e: any) {
@@ -262,6 +280,17 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
         )}
 
         {/* Suggested Replies */}
+        {!readOnly && !isDone && mailAccount && aliases.value.length > 0 && (
+          <label class="mailbox-panel mailbox-from">
+            <span>发件人</span>
+            <select class="md-input" value={fromAddress.value}
+              onChange={(event) => { fromAddress.value = event.currentTarget.value; }}>
+              <option value="">{mailAccount.email_address}</option>
+              {aliases.value.map((address) => <option key={address} value={address}>{address}</option>)}
+            </select>
+          </label>
+        )}
+
         {!readOnly && !isDone && replies.length > 0 && editIdx.value === null && (
           <div class="replies-section">
             <div class="replies-label">建议回复</div>
@@ -453,7 +482,7 @@ export function Inbox() {
       <div class="email-list-pane">
         <div class="email-list-header">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div class="email-list-title">邮件</div>
+            <div class="email-list-title">{combinedMailbox.value ? '统一收件箱' : '邮件'}</div>
             <button class="btn btn-ghost" style="height:28px;padding:0 8px;font-size:12px"
               onClick={() => loadEmails(1)} disabled={loading.value}>
               <span class="material-symbols-rounded" style="font-size:14px">refresh</span>

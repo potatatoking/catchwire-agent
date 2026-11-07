@@ -1,3 +1,5 @@
+import { Encryption } from '../../../security/encryption.ts';
+import type { SmtpCredentials } from '../../../services/smtp-settings.ts';
 import { Router } from 'express';
 import { getPool } from '../../../storage/pg-pool.ts';
 import { EmailSender } from '../../../services/email-sender.ts';
@@ -38,7 +40,7 @@ router.get('/emails/:id', async (req, res) => {
 
 router.post('/emails/:id/reply', async (req, res) => {
   const { body, from } = req.body as { body?: string; from?: string };
-  if (!body?.trim()) { res.status(400).json({ error: 'body is required' }); return; }
+  if (typeof body !== 'string' || !body.trim()) { res.status(400).json({ error: 'body is required' }); return; }
 
   try {
     const userId = (req as any).user?.sub;
@@ -52,12 +54,22 @@ router.post('/emails/:id/reply', async (req, res) => {
     if (!row) { res.status(404).json({ error: 'Email not found' }); return; }
 
     const { rows: acctRows } = await getPool().query(
-      'SELECT * FROM email_accounts WHERE id = $1', [row.account_id]
+      'SELECT * FROM email_accounts WHERE id = $1 AND user_id = $2 AND enabled = TRUE', [row.account_id, userId]
     );
     const account = acctRows[0];
     if (!account) { res.status(404).json({ error: 'Account not found' }); return; }
 
-    const fromAddress = from ?? account.email_address;
+    let fromAddress = account.email_address;
+    if (from !== undefined) {
+      const requested = typeof from === 'string' ? from.trim().toLowerCase() : '';
+      const encryption = new Encryption(process.env.ENCRYPTION_KEY!);
+      const credentials: SmtpCredentials = account.account_type === 'imap' && account.credentials_enc
+        ? JSON.parse(encryption.decrypt(account.credentials_enc)) : {};
+      const allowed = [account.email_address, ...(credentials.smtp_aliases ?? [])];
+      const match = allowed.find((address) => address.toLowerCase() === requested);
+      if (!match) { res.status(400).json({ error: '所选发件地址未在此邮箱的发件别名中配置' }); return; }
+      fromAddress = match;
+    }
     const subject     = row.subject?.startsWith('Re:') ? row.subject : `Re: ${row.subject ?? ''}`;
 
     const result = await sender.send(row.account_id, {

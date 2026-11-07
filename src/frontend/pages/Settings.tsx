@@ -86,6 +86,7 @@ export function Settings() {
   const smtpMessage = useSignal('');
 
   async function openSmtp(account: Account) {
+    renameAccount.value = null;
     smtpAccount.value = account;
     smtpConfig.value = emptySmtp();
     smtpHasPassword.value = false;
@@ -245,15 +246,10 @@ export function Settings() {
             {accounts.value.map((a) => (
               <div key={a.account_id}
                 onClick={() => { selectedAccount.value = a.account_id; }}
-                style={`
-                  display:flex;align-items:center;gap:12px;padding:10px 14px;
-                  border-radius:var(--r-md);cursor:pointer;transition:background 100ms;
-                  background:${a.account_id === selectedAccount.value ? 'var(--accent-subtle)' : 'var(--surface-2)'};
-                  border:1.5px solid ${a.account_id === selectedAccount.value ? 'var(--accent)' : 'transparent'};
-                `}>
+                class={`mailbox-account${a.account_id === selectedAccount.value ? ' is-selected' : ''}`}>
                 <span class="material-symbols-rounded" style="color:var(--accent);font-size:18px">email</span>
-                <div style="flex:1">
-                  <div style="font-size:13px;font-weight:600">{a.display_name || a.email_address}</div>
+                <div class="mailbox-account-info">
+                  <div class="mailbox-account-title">{a.display_name || a.email_address}</div>
                   {a.display_name && a.display_name !== a.email_address && (
                     <div style="font-size:11px;color:var(--text-muted)">{a.email_address}</div>
                   )}
@@ -262,6 +258,8 @@ export function Settings() {
                 <button type="button" class="btn btn-outline" disabled={savingName.value}
                   onClick={(event) => {
                     event.stopPropagation();
+                    smtpAccount.value = null;
+                    smtpConfig.value = emptySmtp();
                     renameAccount.value = a;
                     displayName.value = a.display_name === a.email_address ? '' : a.display_name ?? '';
                     renameError.value = '';
@@ -300,7 +298,7 @@ export function Settings() {
           </div>
 
           {renameAccount.value && (
-            <form class="card" style="margin-bottom:16px" onSubmit={saveDisplayName}>
+            <form class="card mailbox-panel" onSubmit={saveDisplayName}>
               <label class="field-label" for="account-display-name">显示名称 · {renameAccount.value.email_address}</label>
               <input id="account-display-name" class="md-input" value={displayName.value}
                 maxLength={100} disabled={savingName.value}
@@ -318,7 +316,7 @@ export function Settings() {
           )}
 
           {smtpAccount.value && (
-            <form class="card" style="margin-bottom:16px" onSubmit={saveSmtp}>
+            <form class="card mailbox-panel" onSubmit={saveSmtp}>
               <div class="field-label">{smtpAccount.value.email_address}</div>
               <SmtpFields config={smtpConfig.value} hasPassword={smtpHasPassword.value}
                 disabled={smtpBusy.value} onChange={(value) => { smtpConfig.value = value; }} />
@@ -332,8 +330,8 @@ export function Settings() {
           )}
 
           {showAddAcc.value && (
-            <div class="card" style="margin-bottom:16px">
-              <div style="font-weight:600;font-size:13px;margin-bottom:12px">连接邮箱账号</div>
+            <div class="card mailbox-panel">
+              <div class="mailbox-account-title">连接邮箱账号</div>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <div>
                   <div class="field-label">邮箱地址 *</div>

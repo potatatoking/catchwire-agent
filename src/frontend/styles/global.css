@@ -948,3 +948,72 @@ input.md-input, select.md-input, textarea.md-input {
     width: 100vw;
   }
 }
+
+/* Mailbox controls and per-account settings */
+.mailbox-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.mailbox-account:hover,
+.mailbox-account.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.mailbox-account-info { flex: 1 1 10rem; min-width: 0; overflow-wrap: anywhere; }
+.mailbox-account-title { font-size: 13px; font-weight: 650; }
+.mailbox-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  animation: mailbox-panel-in 180ms ease-out both;
+}
+.mailbox-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.mailbox-fields label, .mailbox-from { display: grid; gap: 5px; font-size: 12px; }
+.mailbox-fields textarea { resize: vertical; }
+.mailbox-fields legend { padding: 0 6px; font-size: 13px; font-weight: 650; }
+.mailbox-hint { color: var(--text-muted); }
+.mailbox-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.mailbox-scope:has(:checked) { border-color: var(--accent); background: var(--accent-subtle); }
+.mailbox-scope input { accent-color: var(--accent); }
+.mailbox-source {
+  display: block;
+  overflow: hidden;
+  color: var(--accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+@keyframes mailbox-panel-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mailbox-panel { animation: none; }
+  .mailbox-account, .mailbox-scope { transition: none; }
+}

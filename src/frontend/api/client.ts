@@ -104,6 +104,7 @@ export interface SmtpConfig {
   port: number;
   user: string;
   password?: string;
+  aliases?: string[];
 }
 
 export interface Account {

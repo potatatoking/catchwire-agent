@@ -7,6 +7,7 @@ export const smtpSettingsSchema = z.object({
   port: z.number().int().min(1).max(65535),
   user: z.string().trim().min(1).max(320),
   password: z.string().max(1024).optional(),
+  aliases: z.array(z.string().trim().max(254).email()).max(20).optional(),
 });
 
 export type SmtpSettings = z.infer<typeof smtpSettingsSchema>;
@@ -16,6 +17,7 @@ export interface SmtpCredentials {
   smtp_port?: number;
   smtp_user?: string;
   smtp_pass?: string;
+  smtp_aliases?: string[];
 }
 
 export function smtpCredentials(settings: SmtpSettings, existing?: SmtpCredentials) {
@@ -25,6 +27,8 @@ export function smtpCredentials(settings: SmtpSettings, existing?: SmtpCredentia
     smtp_port: settings.port,
     smtp_user: settings.user,
     smtp_pass: settings.password || existing?.smtp_pass,
+    smtp_aliases: settings.aliases === undefined ? existing?.smtp_aliases ?? []
+      : [...new Map(settings.aliases.map((address) => [address.toLowerCase(), address])).values()],
   };
 }
 
