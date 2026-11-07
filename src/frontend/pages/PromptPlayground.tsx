@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useState } from 'preact/hooks';
 import { selectedAccount } from '../signals/store.ts';
@@ -32,7 +33,7 @@ export function PromptPlayground() {
   const accountId = selectedAccount.value;
 
   async function run() {
-    if (!accountId) { setError('Select an account first.'); return; }
+    if (!accountId) { setError('请先选择邮箱账号。'); return; }
     setRunning(true);
     setError('');
     setResult('');
@@ -51,9 +52,9 @@ export function PromptPlayground() {
   return (
     <div class="page-playground" style="padding:16px;max-width:1100px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="margin:0">Prompt Playground</h2>
+        <h2 style="margin:0">提示词调试台</h2>
         <span style="font-size:13px;color:var(--text-muted)">
-          Test prompts against sample emails before applying them to your account.
+          先用示例邮件测试提示词，再应用到你的账号。
         </span>
       </div>
 
@@ -65,7 +66,7 @@ export function PromptPlayground() {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
-          <div class="field-label" style="margin-bottom:6px;font-weight:600">System Prompt</div>
+          <div class="field-label" style="margin-bottom:6px;font-weight:600">系统提示词</div>
           <textarea
             class="edit-area"
             rows={14}
@@ -74,12 +75,12 @@ export function PromptPlayground() {
             onInput={(e) => setPrompt((e.target as HTMLTextAreaElement).value)}
           />
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-            Supports variables: {'{{tone}}'}, {'{{max_words}}'}, {'{{email_body}}'}, {'{{sender_name}}'}
+            支持的变量： {'{{tone}}'}, {'{{max_words}}'}, {'{{email_body}}'}, {'{{sender_name}}'}
           </div>
         </div>
 
         <div>
-          <div class="field-label" style="margin-bottom:6px;font-weight:600">Sample Email</div>
+          <div class="field-label" style="margin-bottom:6px;font-weight:600">示例邮件</div>
           <textarea
             class="edit-area"
             rows={14}
@@ -92,14 +93,14 @@ export function PromptPlayground() {
 
       <div style="margin-top:16px;display:flex;justify-content:flex-end">
         <button class="btn btn-primary" onClick={run} disabled={running}>
-          {running ? 'Running…' : 'Run'}
+          {running ? '运行中…' : '运行'}
         </button>
       </div>
 
       {(result || tokens !== null) && (
         <div style="margin-top:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div class="field-label" style="font-weight:600">Result</div>
+            <div class="field-label" style="font-weight:600">结果</div>
             {tokens !== null && (
               <span style="font-size:12px;color:var(--text-muted)">{tokens} tokens used</span>
             )}

@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -11,7 +12,7 @@ const LLM_PROVIDERS = [
   { id: 'gemini',     label: 'Gemini',      placeholder: 'AIza...' },
   { id: 'claude',     label: 'Claude',      placeholder: 'sk-ant-...' },
   { id: 'ollama',     label: 'Ollama',      placeholder: 'http://localhost:11434' },
-  { id: 'custom',     label: 'Custom',      placeholder: 'API Key' },
+  { id: 'custom',     label: '自定义',      placeholder: 'API 密钥' },
 ] as const;
 
 const LLM_MODELS: Record<string, string[]> = {
@@ -24,13 +25,15 @@ const LLM_MODELS: Record<string, string[]> = {
   custom:     [],
 };
 
+const TONE_LABELS = { professional: '专业', friendly: '友好', formal: '正式', casual: '随意' };
 const TONES    = ['professional', 'friendly', 'formal', 'casual'] as const;
 const AUTONOMY = [
-  { id: 'full',         label: 'Auto-Send',    desc: 'Sends if AI confidence ≥ 90%' },
-  { id: 'draft',        label: 'Draft Mode',   desc: 'Always asks before sending' },
-  { id: 'consultative', label: 'Consult Only', desc: 'Shows summary, no draft' },
+  { id: 'full',         label: '自动发送',    desc: 'AI 置信度达到 90% 时自动发送' },
+  { id: 'draft',        label: '草稿模式',   desc: '发送前始终需要确认' },
+  { id: 'consultative', label: '仅提供建议', desc: '只显示摘要' },
 ] as const;
 const LANGUAGES = ['auto','en','fa','de','fr','es','ar','zh'] as const;
+const LANGUAGE_LABELS = { auto: '自动识别', en: '英语', fa: '波斯语', de: '德语', fr: '法语', es: '西班牙语', ar: '阿拉伯语', zh: '中文' };
 
 export function Settings() {
   const provider   = useSignal('openrouter');
@@ -124,14 +127,14 @@ export function Settings() {
         }),
       });
       const d = await r.json() as { ok: boolean; error?: string };
-      testResult.value = { ok: d.ok, msg: d.ok ? 'Connection successful! You can now save.' : (d.error ?? 'Connection failed') };
+      testResult.value = { ok: d.ok, msg: d.ok ? '连接成功，可以保存。' : (d.error ?? '连接失败') };
     } catch {
-      testResult.value = { ok: false, msg: 'Network error — server unreachable' };
+      testResult.value = { ok: false, msg: '网络错误，无法连接服务器' };
     } finally { testingConn.value = false; }
   };
 
   const addAccount = async () => {
-    if (!newEmail.value.trim()) { addAccErr.value = 'Email is required'; return; }
+    if (!newEmail.value.trim()) { addAccErr.value = '请填写邮箱地址'; return; }
     addingAcc.value = true; addAccErr.value = '';
     try {
       const creds = newType.value === 'imap' ? {
@@ -162,12 +165,12 @@ export function Settings() {
 
         {/* ── Accounts ── */}
         <section style="margin-bottom:32px">
-          <div class="section-header">Email Accounts</div>
+          <div class="section-header">邮箱账号</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
             {accounts.value.length === 0 && (
               <div class="empty-state" style="padding:24px">
                 <span class="material-symbols-rounded">email</span>
-                <p>No accounts connected yet</p>
+                <p>尚未连接邮箱账号</p>
               </div>
             )}
             {accounts.value.map((a) => (
@@ -188,7 +191,7 @@ export function Settings() {
                   <a href={`/api/auth/gmail/start?accountId=${a.account_id}`}
                     class="btn btn-outline"
                     style="height:26px;font-size:11px;padding:0 10px;text-decoration:none"
-                    title="Connect Gmail OAuth">
+                    title="授权连接 Gmail">
                     <span class="material-symbols-rounded" style="font-size:13px">link</span>
                     OAuth
                   </a>
@@ -201,66 +204,66 @@ export function Settings() {
             <button class="btn btn-outline" style="align-self:flex-start;margin-top:4px"
               onClick={() => { showAddAcc.value = !showAddAcc.value; }}>
               <span class="material-symbols-rounded">add</span>
-              Add Account
+              添加邮箱
             </button>
           </div>
 
           {showAddAcc.value && (
             <div class="card" style="margin-bottom:16px">
-              <div style="font-weight:600;font-size:13px;margin-bottom:12px">Connect Email Account</div>
+              <div style="font-weight:600;font-size:13px;margin-bottom:12px">连接邮箱账号</div>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <div>
-                  <div class="field-label">Email Address *</div>
+                  <div class="field-label">邮箱地址 *</div>
                   <input class="md-input" value={newEmail.value}
                     onInput={(e: any) => { newEmail.value = e.target.value; }}
                     placeholder="you@example.com" />
                 </div>
                 <div>
-                  <div class="field-label">Display Name</div>
+                  <div class="field-label">显示名称</div>
                   <input class="md-input" value={newDisplay.value}
                     onInput={(e: any) => { newDisplay.value = e.target.value; }}
-                    placeholder="Optional display name" />
+                    placeholder="显示名称（可选）" />
                 </div>
                 <div>
-                  <div class="field-label">Account Type</div>
+                  <div class="field-label">账号类型</div>
                   <select class="md-input" value={newType.value}
                     onChange={(e: any) => { newType.value = e.target.value; }}>
-                    {['gmail','outlook','imap','forward'].map((t) => <option value={t}>{t.toUpperCase()}</option>)}
+                    {['gmail','outlook','imap','forward'].map((t) => <option value={t}>{t === 'forward' ? '仅接收转发' : t.toUpperCase()}</option>)}
                   </select>
                 </div>
                 {newType.value === 'imap' && (
                   <>
                     <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
                       <div>
-                        <div class="field-label">IMAP Host</div>
+                        <div class="field-label">IMAP 服务器</div>
                         <input class="md-input" value={imapHost.value}
                           onInput={(e: any) => { imapHost.value = e.target.value; }}
                           placeholder="imap.gmail.com" />
                       </div>
                       <div style="width:80px">
-                        <div class="field-label">Port</div>
+                        <div class="field-label">端口</div>
                         <input class="md-input" value={imapPort.value} type="number"
                           onInput={(e: any) => { imapPort.value = e.target.value; }} />
                       </div>
                     </div>
                     <div>
-                      <div class="field-label">Username</div>
+                      <div class="field-label">用户名</div>
                       <input class="md-input" value={imapUser.value}
                         onInput={(e: any) => { imapUser.value = e.target.value; }}
-                        placeholder="Leave blank to use email address" />
+                        placeholder="留空则使用邮箱地址" />
                     </div>
                     <div>
-                      <div class="field-label">Password / App Password</div>
+                      <div class="field-label">密码或应用专用密码</div>
                       <input class="md-input" type="password" value={imapPass.value}
                         onInput={(e: any) => { imapPass.value = e.target.value; testResult.value = null; }}
-                        placeholder="Gmail: use App Password, not your account password" />
+                        placeholder="Gmail 请填写应用专用密码" />
                     </div>
                     {/* Test connection */}
                     <div>
                       <button class="btn btn-ghost" style="font-size:13px"
                         onClick={testConnection} disabled={testingConn.value || !imapPass.value}>
                         <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle">wifi_tethering</span>
-                        {testingConn.value ? ' Testing…' : ' Test Connection'}
+                        {testingConn.value ? ' 测试中…' : ' 测试连接'}
                       </button>
                     </div>
                     {testResult.value && (
@@ -279,9 +282,9 @@ export function Settings() {
                 )}
                 <div style="display:flex;gap:8px;margin-top:4px">
                   <button class="btn btn-primary" onClick={addAccount} disabled={addingAcc.value}>
-                    {addingAcc.value ? 'Connecting…' : 'Connect Account'}
+                    {addingAcc.value ? '连接中…' : '连接账号'}
                   </button>
-                  <button class="btn btn-ghost" onClick={() => { showAddAcc.value = false; testResult.value = null; }}>Cancel</button>
+                  <button class="btn btn-ghost" onClick={() => { showAddAcc.value = false; testResult.value = null; }}>取消</button>
                 </div>
               </div>
             </div>
@@ -291,7 +294,7 @@ export function Settings() {
         {/* ── Integrations ── */}
         <div class="divider" style="margin-bottom:24px" />
         <section style="margin-bottom:32px">
-          <div class="section-header" style="margin-bottom:16px">Integrations</div>
+          <div class="section-header" style="margin-bottom:16px">集成</div>
 
           {/* n8n / API */}
           <div class="card" style="margin-bottom:12px;padding:16px 18px">
@@ -299,13 +302,13 @@ export function Settings() {
               <span class="material-symbols-rounded" style="color:var(--accent);font-size:20px">webhook</span>
               <div>
                 <div style="font-size:13px;font-weight:600">n8n / Make / External Agents</div>
-                <div style="font-size:11px;color:var(--text-muted)">Connect any automation tool via REST API + webhooks</div>
+                <div style="font-size:11px;color:var(--text-muted)">通过 REST API 和 Webhook 连接自动化工具</div>
               </div>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px">
               {[
-                { label: 'API Base URL', value: `${apiBaseUrl.value}/api`, field: 'apibase' },
-                { label: 'Auth endpoint', value: `POST ${apiBaseUrl.value}/api/auth/login`, field: 'auth' },
+                { label: 'API 基础地址', value: `${apiBaseUrl.value}/api`, field: 'apibase' },
+                { label: '身份验证接口', value: `POST ${apiBaseUrl.value}/api/auth/login`, field: 'auth' },
               ].map(({ label, value, field }) => (
                 <div key={field}>
                   <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">{label}</div>
@@ -315,7 +318,7 @@ export function Settings() {
                     </code>
                     <button class="btn btn-ghost" style="height:28px;padding:0 8px;min-width:0"
                       onClick={() => copyToClipboard(value, field)}
-                      title="Copy">
+                      title="复制">
                       <span class="material-symbols-rounded" style="font-size:14px">
                         {copiedField.value === field ? 'check' : 'content_copy'}
                       </span>
@@ -324,9 +327,9 @@ export function Settings() {
                 </div>
               ))}
               <div style="font-size:11px;color:var(--text-muted);margin-top:4px;padding:8px 10px;background:var(--surface-2);border-radius:var(--r-sm,6px);line-height:1.6">
-                1. POST <code>/api/auth/login</code> → get <code>token</code><br/>
-                2. Add <code>Authorization: Bearer &lt;token&gt;</code> to requests<br/>
-                3. Register a webhook at <a href="/agent/webhooks" style="color:var(--accent)">Webhooks</a> to receive real-time events
+                1. 向 <code>/api/auth/login</code> 发送 POST 请求，获取 <code>token</code><br/>
+                2. 在请求中添加 <code>Authorization: Bearer &lt;token&gt;</code><br/>
+                3. 在 <a href="/agent/webhooks" style="color:var(--accent)">Webhook</a> 页面注册接收地址，以获取实时事件
               </div>
             </div>
           </div>
@@ -336,19 +339,19 @@ export function Settings() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
               <span class="material-symbols-rounded" style="color:var(--accent);font-size:20px">send</span>
               <div style="flex:1">
-                <div style="font-size:13px;font-weight:600">Telegram Bot</div>
-                <div style="font-size:11px;color:var(--text-muted)">Approve / reject replies from your phone</div>
+                <div style="font-size:13px;font-weight:600">Telegram 机器人</div>
+                <div style="font-size:11px;color:var(--text-muted)">用手机批准或拒绝回复</div>
               </div>
               <div style={`font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;
                 background:${telegramEnabled.value ? 'var(--c-low-bg,#1a2e1a)' : 'var(--surface-2)'};
                 color:${telegramEnabled.value ? 'var(--c-low,#4caf50)' : 'var(--text-muted)'}`}>
-                {telegramEnabled.value ? 'ACTIVE' : 'NOT CONFIGURED'}
+                {telegramEnabled.value ? '已启用' : '未配置'}
               </div>
             </div>
             {telegramEnabled.value ? (
               <div style="font-size:11px;color:var(--text-muted);line-height:1.7">
-                Bot is running. Open Telegram and find your bot.<br/>
-                <strong style="color:var(--text)">Commands:</strong><br/>
+                机器人正在运行，可在 Telegram 中找到它。<br/>
+                <strong style="color:var(--text)">命令：</strong><br/>
                 <code>/start</code> — welcome &amp; connect account<br/>
                 <code>/settings</code> — change LLM, tone, autonomy<br/>
                 <code>/setmodel &lt;name&gt;</code> — switch model<br/>
@@ -359,9 +362,9 @@ export function Settings() {
               </div>
             ) : (
               <div style="font-size:11px;color:var(--text-muted);line-height:1.7">
-                Set <code>TELEGRAM_BOT_TOKEN</code> in your <code>.env</code> file to enable.<br/>
-                Get a token from <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent)">@BotFather</a> on Telegram.<br/>
-                Optionally set <code>TELEGRAM_ALLOWED_USERS</code> to a comma-separated list of Telegram user IDs to restrict access.
+                在 <code>.env</code> 中设置 <code>TELEGRAM_BOT_TOKEN</code> 即可启用。<br/>
+                获取令牌，请联系 Telegram 上的 <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent)">@BotFather</a>。<br/>
+                可选：将 <code>TELEGRAM_ALLOWED_USERS</code> 设为以逗号分隔的 Telegram 用户 ID 列表，以限制访问权限。
               </div>
             )}
           </div>
@@ -371,26 +374,26 @@ export function Settings() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
               <span class="material-symbols-rounded" style="color:var(--accent);font-size:20px">forward_to_inbox</span>
               <div>
-                <div style="font-size:13px;font-weight:600">Email Forwarding (SMTP)</div>
-                <div style="font-size:11px;color:var(--text-muted)">Forward any email directly to the agent</div>
+                <div style="font-size:13px;font-weight:600">邮件转发（SMTP）</div>
+                <div style="font-size:11px;color:var(--text-muted)">将邮件直接转发给助手</div>
               </div>
             </div>
             <div>
-              <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">Forward to</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">转发至</div>
               <div style="display:flex;align-items:center;gap:6px">
                 <code style="flex:1;font-size:11px;background:var(--surface-2);padding:6px 10px;border-radius:var(--r-sm,6px);font-family:var(--mono)">
                   {apiBaseUrl.value.replace(/^https?:\/\//, '')} port {smtpPort.value}
                 </code>
                 <button class="btn btn-ghost" style="height:28px;padding:0 8px;min-width:0"
                   onClick={() => copyToClipboard(`${apiBaseUrl.value.replace(/^https?:\/\//, '')}:${smtpPort.value}`, 'smtp')}
-                  title="Copy">
+                  title="复制">
                   <span class="material-symbols-rounded" style="font-size:14px">
                     {copiedField.value === 'smtp' ? 'check' : 'content_copy'}
                   </span>
                 </button>
               </div>
               <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
-                Set up a forwarding rule in Gmail / Outlook to forward emails to this address.
+                在 Gmail 或 Outlook 中设置规则，将邮件转发到此地址。
               </div>
             </div>
           </div>
@@ -404,12 +407,12 @@ export function Settings() {
             <section style="margin-top:24px;margin-bottom:32px">
               <div class="section-header" style="margin-bottom:16px">
                 AI Configuration
-                {loadingP.value && <span style="font-size:11px;color:var(--text-muted);margin-left:8px;font-weight:400">Loading…</span>}
+                {loadingP.value && <span style="font-size:11px;color:var(--text-muted);margin-left:8px;font-weight:400">加载中…</span>}
               </div>
 
               {/* Provider selector */}
               <div style="margin-bottom:16px">
-                <div class="field-label">LLM Provider</div>
+                <div class="field-label">模型服务商</div>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                   {LLM_PROVIDERS.map((p) => (
                     <button key={p.id}
@@ -424,7 +427,7 @@ export function Settings() {
 
               {/* Model */}
               <div style="margin-bottom:16px">
-                <div class="field-label">Model</div>
+                <div class="field-label">模型</div>
                 {suggestedModels.length > 0 ? (
                   <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
                     <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -439,23 +442,23 @@ export function Settings() {
                     </div>
                     <input class="md-input" value={llmModel.value}
                       onInput={(e: any) => { llmModel.value = e.target.value; }}
-                      placeholder="Or type a custom model name" style="margin-top:4px" />
+                      placeholder="或输入自定义模型名称" style="margin-top:4px" />
                   </div>
                 ) : (
                   <input class="md-input" value={llmModel.value}
                     onInput={(e: any) => { llmModel.value = e.target.value; }}
-                    placeholder="model name or path" style="margin-top:6px" />
+                    placeholder="模型名称或路径" style="margin-top:6px" />
                 )}
               </div>
 
               {/* API Key */}
               <div style="margin-bottom:16px">
-                <div class="field-label">API Key</div>
+                <div class="field-label">API 密钥</div>
                 <div style="position:relative;margin-top:6px">
                   <input class="md-input" type={showKey.value ? 'text' : 'password'}
                     value={apiKey.value}
                     onInput={(e: any) => { apiKey.value = e.target.value; }}
-                    placeholder={providerInfo?.placeholder ?? 'Leave blank to keep existing key'}
+                    placeholder={providerInfo?.placeholder ?? '留空则保留现有密钥'}
                     style="padding-right:40px" />
                   <button onClick={() => { showKey.value = !showKey.value; }}
                     style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0">
@@ -465,14 +468,14 @@ export function Settings() {
                   </button>
                 </div>
                 <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
-                  Leave blank to keep the existing key. Stored encrypted in the database.
+                  留空则保留现有密钥。密钥加密存储于数据库。
                 </div>
               </div>
 
               {/* Base URL (Ollama / Custom) */}
               {(provider.value === 'ollama' || provider.value === 'custom') && (
                 <div style="margin-bottom:16px">
-                  <div class="field-label">Base URL</div>
+                  <div class="field-label">接口地址</div>
                   <input class="md-input" value={baseUrl.value}
                     onInput={(e: any) => { baseUrl.value = e.target.value; }}
                     placeholder={provider.value === 'ollama' ? 'http://localhost:11434' : 'https://api.example.com/v1'}
@@ -485,18 +488,18 @@ export function Settings() {
 
             {/* ── Behavior ── */}
             <section style="margin-top:24px;margin-bottom:32px">
-              <div class="section-header" style="margin-bottom:16px">Reply Behavior</div>
+              <div class="section-header" style="margin-bottom:16px">回复方式</div>
 
               {/* Tone */}
               <div style="margin-bottom:16px">
-                <div class="field-label">Reply Tone</div>
+                <div class="field-label">回复语气</div>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                   {TONES.map((t) => (
                     <button key={t}
                       class={`btn ${tone.value === t ? 'btn-primary' : 'btn-outline'}`}
                       style="font-size:12px;height:30px;padding:0 14px;text-transform:capitalize"
                       onClick={() => { tone.value = t; }}>
-                      {t}
+                      {TONE_LABELS[t]}
                     </button>
                   ))}
                 </div>
@@ -504,7 +507,7 @@ export function Settings() {
 
               {/* Autonomy */}
               <div style="margin-bottom:16px">
-                <div class="field-label">Autonomy Level</div>
+                <div class="field-label">自动处理方式</div>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
                   {AUTONOMY.map((a) => (
                     <label key={a.id} style={`
@@ -528,14 +531,14 @@ export function Settings() {
 
               {/* Language */}
               <div style="margin-bottom:16px">
-                <div class="field-label">Reply Language</div>
+                <div class="field-label">回复语言</div>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
                   {LANGUAGES.map((l) => (
                     <button key={l}
                       class={`btn ${language.value === l ? 'btn-primary' : 'btn-outline'}`}
                       style="font-size:12px;height:30px;padding:0 12px"
                       onClick={() => { language.value = l; }}>
-                      {l === 'auto' ? 'Auto Detect' : l.toUpperCase()}
+                      {LANGUAGE_LABELS[l]}
                     </button>
                   ))}
                 </div>
@@ -547,8 +550,8 @@ export function Settings() {
                   onChange={(e: any) => { useEmoji.value = e.target.checked; }}
                   style="accent-color:var(--accent);width:16px;height:16px" />
                 <div>
-                  <div style="font-size:13px;font-weight:500">Use emoji in replies</div>
-                  <div style="font-size:11px;color:var(--text-muted)">Add contextual emoji for a friendlier tone</div>
+                  <div style="font-size:13px;font-weight:500">在回复中使用表情符号</div>
+                  <div style="font-size:11px;color:var(--text-muted)">按上下文添加表情符号，使语气更亲切</div>
                 </div>
               </label>
             </section>
@@ -557,10 +560,10 @@ export function Settings() {
             <div style="display:flex;align-items:center;gap:12px;padding-bottom:40px">
               <button class="btn btn-primary" style="height:38px;padding:0 24px"
                 onClick={savePersona} disabled={loadingP.value}>
-                Save Settings
+                保存设置
               </button>
               {savedMsg.value === 'saved' && (
-                <span style="font-size:13px;color:var(--c-low);font-weight:500">✓ Settings saved</span>
+                <span style="font-size:13px;color:var(--c-low);font-weight:500">✓ 设置已保存</span>
               )}
               {savedMsg.value.startsWith('error:') && (
                 <span style="font-size:13px;color:var(--c-critical)">{savedMsg.value.slice(6)}</span>

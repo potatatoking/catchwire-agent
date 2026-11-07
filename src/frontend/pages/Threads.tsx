@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -47,7 +48,7 @@ export function Threads() {
     listErr.value = '';
     api.threads.list(selectedAccount.value)
       .then((data) => { threads.value = data as Thread[]; })
-      .catch((e: any) => { listErr.value = e.message ?? 'Failed to load threads'; })
+      .catch((e: any) => { listErr.value = e.message ?? '加载邮件会话失败'; })
       .finally(() => { loading.value = false; });
   }, [selectedAccount.value]);
 
@@ -61,7 +62,7 @@ export function Threads() {
       const data = await api.threads.summary(threadId);
       detail.value = data as any;
     } catch (e: any) {
-      detailErr.value = e.message ?? 'Could not load thread';
+      detailErr.value = e.message ?? '无法加载此邮件会话';
     } finally {
       loadingDet.value = false;
     }
@@ -75,11 +76,11 @@ export function Threads() {
   };
 
   if (!selectedAccount.value) {
-    return <div class="empty-state"><span class="material-symbols-rounded">forum</span><p>Select an account</p></div>;
+    return <div class="empty-state"><span class="material-symbols-rounded">forum</span><p>请选择邮箱账号</p></div>;
   }
 
   if (loading.value) {
-    return <div class="empty-state"><span class="material-symbols-rounded" style="animation:spin 1s linear infinite">sync</span><p>Loading threads…</p></div>;
+    return <div class="empty-state"><span class="material-symbols-rounded" style="animation:spin 1s linear infinite">sync</span><p>正在加载邮件会话…</p></div>;
   }
 
   if (listErr.value) {
@@ -87,12 +88,12 @@ export function Threads() {
   }
 
   if (threads.value.length === 0) {
-    return <div class="empty-state"><span class="material-symbols-rounded">forum</span><p>No threads yet</p></div>;
+    return <div class="empty-state"><span class="material-symbols-rounded">forum</span><p>暂无邮件会话</p></div>;
   }
 
   return (
     <div>
-      <div class="section-header">{threads.value.length} thread{threads.value.length !== 1 ? 's' : ''}</div>
+      <div class="section-header">{threads.value.length} 个邮件会话</div>
       {threads.value.map((t) => (
         <div key={t.id}>
           <div
@@ -102,7 +103,7 @@ export function Threads() {
             onClick={() => openThread(t.id)}
           >
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-              <div style="font-weight:600;flex:1">{t.subject || '(no subject)'}</div>
+              <div style="font-weight:600;flex:1">{t.subject || '（无主题）'}</div>
               <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
                 <span class="chip">
                   {t.message_count} msg{t.message_count !== 1 ? 's' : ''}
@@ -117,7 +118,7 @@ export function Threads() {
           {selected.value === t.id && (
             <div style="margin:-4px 0 12px 16px;padding:12px;background:var(--surface-1);border-radius:0 0 var(--r-md) var(--r-md);border:1px solid var(--border)">
               {loadingDet.value ? (
-                <p style="font-size:13px;color:var(--text-muted)">Loading messages…</p>
+                <p style="font-size:13px;color:var(--text-muted)">正在加载邮件…</p>
               ) : detailErr.value ? (
                 <p style="font-size:13px;color:var(--c-critical)">{detailErr.value}</p>
               ) : detail.value?.messages.map((m) => (

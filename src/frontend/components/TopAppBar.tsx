@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { AccountSwitcher } from './AccountSwitcher.tsx';
 import { PageInfo, PageInfoContent } from './PageInfo.tsx';
@@ -15,14 +16,14 @@ export function TopAppBar({
       <span class="title">{title}</span>
       <AccountSwitcher />
       {info && <PageInfo info={info} />}
-      <button class="icon-btn" title="Refresh" onClick={() => window.location.reload()}>
+      <button class="icon-btn" title="刷新" onClick={() => window.location.reload()}>
         <span class="material-symbols-rounded">refresh</span>
       </button>
       {onChatToggle && (
         <button
           class={`chat-toggle-btn${chatOpen ? ' active' : ''}`}
           onClick={onChatToggle}
-          title="Agent Chat"
+          title="助手对话"
         >
           <span class="material-symbols-rounded">smart_toy</span>
         </button>

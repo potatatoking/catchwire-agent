@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useSignal } from '@preact/signals';
 import { api } from '../api/client.ts';
@@ -6,11 +7,11 @@ import { accounts, selectedAccount } from '../signals/store.ts';
 // ── Constants (same as Settings) ─────────────────────────────────────────────
 
 const LLM_PROVIDERS = [
-  { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-v1-...', note: 'Access to all models — recommended' },
+  { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-v1-...', note: '可访问多个模型，推荐使用' },
   { id: 'openai',     label: 'OpenAI',     placeholder: 'sk-...',        note: 'GPT-4o, o3-mini' },
   { id: 'claude',     label: 'Claude',     placeholder: 'sk-ant-...',    note: 'Sonnet, Haiku, Opus' },
   { id: 'gemini',     label: 'Gemini',     placeholder: 'AIza...',       note: 'Gemini 2.0 Flash, Pro' },
-  { id: 'ollama',     label: 'Ollama',     placeholder: '',              note: 'Local — no API key needed' },
+  { id: 'ollama',     label: 'Ollama',     placeholder: '',              note: '本地运行，无需 API 密钥' },
 ] as const;
 
 const LLM_MODELS: Record<string, string[]> = {
@@ -23,9 +24,9 @@ const LLM_MODELS: Record<string, string[]> = {
 
 const TONES     = ['professional', 'friendly', 'formal', 'casual'] as const;
 const AUTONOMY  = [
-  { id: 'full',         label: 'Auto-Send',  desc: 'Agent sends replies automatically when confident' },
-  { id: 'draft',        label: 'Draft Mode', desc: 'Agent drafts replies, you approve each one' },
-  { id: 'consultative', label: 'Advise Only', desc: 'Agent summarises — you write your own replies' },
+  { id: 'full',         label: '自动发送',  desc: '助手在有把握时自动回复' },
+  { id: 'draft',        label: '草稿模式', desc: '助手拟定回复，由你逐封确认' },
+  { id: 'consultative', label: '仅提供建议', desc: '助手总结邮件，由你撰写回复' },
 ] as const;
 
 const ONBOARDING_KEY = 'ea_onboarding_account';
@@ -63,16 +64,16 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
   const err       = useSignal('');
 
   const create = async () => {
-    if (!email.value.trim()) { err.value = 'Email address is required'; return; }
+    if (!email.value.trim()) { err.value = '请填写邮箱地址'; return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
-      err.value = 'Enter a valid email address'; return;
+      err.value = '请输入有效的邮箱地址'; return;
     }
     saving.value = true;
     err.value    = '';
     try {
       const credentials: Record<string, string> = {};
       if (type.value === 'imap') {
-        if (!imapHost.value || !imapPass.value) { err.value = 'IMAP host and password are required'; saving.value = false; return; }
+        if (!imapHost.value || !imapPass.value) { err.value = '请填写 IMAP 服务器和密码'; saving.value = false; return; }
         credentials.host     = imapHost.value;
         credentials.port     = imapPort.value;
         credentials.user     = imapUser.value || email.value;
@@ -92,24 +93,24 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
         onNext(acc.account_id);
       }
     } catch (e: any) {
-      err.value = e.message ?? 'Failed to connect account';
+      err.value = e.message ?? '连接邮箱失败';
     } finally {
       saving.value = false;
     }
   };
 
   const types: { id: EmailType; icon: string; label: string; desc: string }[] = [
-    { id: 'gmail',   icon: 'mail',    label: 'Gmail',        desc: 'OAuth — secure, no password needed' },
-    { id: 'imap',    icon: 'dns',     label: 'IMAP',         desc: 'Any IMAP-compatible inbox' },
-    { id: 'forward', icon: 'forward_to_inbox', label: 'Forward-only', desc: 'Forward emails to this agent' },
+    { id: 'gmail',   icon: 'mail',    label: 'Gmail',        desc: '通过 OAuth 授权，无需邮箱密码' },
+    { id: 'imap',    icon: 'dns',     label: 'IMAP',         desc: '适用于支持 IMAP 的邮箱' },
+    { id: 'forward', icon: 'forward_to_inbox', label: '仅接收转发', desc: '将邮件转发给此助手' },
   ];
 
   return (
     <div>
       <div style="font-size:28px;margin-bottom:8px">📬</div>
-      <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">Connect your inbox</h2>
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">连接邮箱</h2>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:28px;line-height:1.6">
-        Choose how to connect your email. You can add more accounts later in Settings.
+        请选择邮箱连接方式。稍后可在设置中添加更多账号。
       </p>
 
       {/* Type picker */}
@@ -135,7 +136,7 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
 
       {/* Email field */}
       <div style="margin-bottom:14px">
-        <div class="field-label">Email Address</div>
+        <div class="field-label">邮箱地址</div>
         <input class="md-input" style="margin-top:5px"
           type="email" value={email.value}
           onInput={(e: any) => { email.value = e.target.value; }}
@@ -147,25 +148,25 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
         <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;padding:14px;background:var(--surface-2);border-radius:var(--r-md)">
           <div style="display:grid;grid-template-columns:1fr 80px;gap:8px">
             <div>
-              <div class="field-label">IMAP Host</div>
+              <div class="field-label">IMAP 服务器</div>
               <input class="md-input" style="margin-top:5px" value={imapHost.value}
                 onInput={(e: any) => { imapHost.value = e.target.value; }}
                 placeholder="imap.gmail.com" />
             </div>
             <div>
-              <div class="field-label">Port</div>
+              <div class="field-label">端口</div>
               <input class="md-input" style="margin-top:5px" value={imapPort.value}
                 onInput={(e: any) => { imapPort.value = e.target.value; }} />
             </div>
           </div>
           <div>
-            <div class="field-label">Username (leave blank to use email)</div>
+            <div class="field-label">用户名（留空则使用邮箱地址）</div>
             <input class="md-input" style="margin-top:5px" value={imapUser.value}
               onInput={(e: any) => { imapUser.value = e.target.value; }}
-              placeholder="same as email address" />
+              placeholder="与邮箱地址相同" />
           </div>
           <div>
-            <div class="field-label">Password / App Password</div>
+            <div class="field-label">密码或应用专用密码</div>
             <input class="md-input" style="margin-top:5px" type="password" value={imapPass.value}
               onInput={(e: any) => { imapPass.value = e.target.value; }}
               placeholder="••••••••" />
@@ -176,8 +177,8 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
       {/* Forward-only hint */}
       {type.value === 'forward' && (
         <div style="padding:12px 14px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:14px;font-size:12px;color:var(--text-muted);line-height:1.7">
-          After setup, you'll get an SMTP address to forward emails to.<br />
-          Go to your inbox settings and add a forwarding rule to that address.
+          设置完成后，你会获得一个用于接收转发邮件的 SMTP 地址。<br />
+          在邮箱设置中添加一条转发到该地址的规则。
         </div>
       )}
 
@@ -189,7 +190,7 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
 
       <button class="btn btn-primary" style="width:100%;height:44px;font-size:14px"
         onClick={create} disabled={saving.value}>
-        {saving.value ? 'Connecting…' : type.value === 'gmail' ? 'Continue with Google →' : 'Connect & Continue →'}
+        {saving.value ? '连接中…' : type.value === 'gmail' ? '使用 Google 账号继续 →' : '连接并继续 →'}
       </button>
 
       {type.value === 'gmail' && (
@@ -232,7 +233,7 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
       });
       onNext();
     } catch (e: any) {
-      err.value = e.message ?? 'Failed to save settings';
+      err.value = e.message ?? '保存设置失败';
     } finally {
       saving.value = false;
     }
@@ -241,14 +242,14 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
   return (
     <div>
       <div style="font-size:28px;margin-bottom:8px">🤖</div>
-      <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">Configure your AI agent</h2>
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">配置 AI 助手</h2>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:28px;line-height:1.6">
-        Choose the AI model and how you want the agent to behave. You can change these anytime in Settings.
+        选择 AI 模型和邮件处理方式。你可以随时在设置中调整。
       </p>
 
       {/* LLM Provider */}
       <div style="margin-bottom:20px">
-        <div class="field-label" style="margin-bottom:8px">AI Provider</div>
+        <div class="field-label" style="margin-bottom:8px">AI 服务商</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           {LLM_PROVIDERS.map((p) => (
             <button key={p.id}
@@ -269,7 +270,7 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
 
       {/* Model */}
       <div style="margin-bottom:20px">
-        <div class="field-label" style="margin-bottom:8px">Model</div>
+        <div class="field-label" style="margin-bottom:8px">模型</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
           {suggestedModels.map((m) => (
             <button key={m}
@@ -285,13 +286,13 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
       {/* API Key */}
       {provider.value !== 'ollama' && (
         <div style="margin-bottom:20px">
-          <div class="field-label" style="margin-bottom:5px">API Key</div>
+          <div class="field-label" style="margin-bottom:5px">API 密钥</div>
           <div style="position:relative">
             <input class="md-input" style="padding-right:40px"
               type={showKey.value ? 'text' : 'password'}
               value={apiKey.value}
               onInput={(e: any) => { apiKey.value = e.target.value; }}
-              placeholder={providerInfo?.placeholder ?? 'Paste your API key here'} />
+              placeholder={providerInfo?.placeholder ?? '在此粘贴 API 密钥'} />
             <button onClick={() => { showKey.value = !showKey.value; }}
               style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0">
               <span class="material-symbols-rounded" style="font-size:16px">
@@ -300,14 +301,14 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
             </button>
           </div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
-            Stored encrypted. Never shared.
+            密钥会加密保存。
           </div>
         </div>
       )}
 
       {/* Tone */}
       <div style="margin-bottom:20px">
-        <div class="field-label" style="margin-bottom:8px">Reply Tone</div>
+        <div class="field-label" style="margin-bottom:8px">回复语气</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           {TONES.map((t) => (
             <button key={t}
@@ -322,7 +323,7 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
 
       {/* Autonomy */}
       <div style="margin-bottom:20px">
-        <div class="field-label" style="margin-bottom:8px">Agent Autonomy</div>
+        <div class="field-label" style="margin-bottom:8px">自动处理方式</div>
         <div style="display:flex;flex-direction:column;gap:6px">
           {AUTONOMY.map((a) => (
             <button key={a.id}
@@ -342,19 +343,19 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
         </div>
       </div>
 
-      {/* System Prompt (optional) */}
+      {/* 系统提示词 (optional) */}
       <div style="margin-bottom:24px">
         <div class="field-label" style="margin-bottom:5px">
-          System Prompt
-          <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px">optional</span>
+          系统提示词
+          <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px">可选</span>
         </div>
         <textarea class="edit-area" rows={4} style="width:100%"
           value={prompt.value}
           onInput={(e: any) => { prompt.value = e.target.value; }}
-          placeholder={`You are a professional email assistant for {{sender_name}}.\nAlways reply in a concise, helpful tone.\nKeep responses under 150 words.`}
+          placeholder={`你是 {{sender_name}} 的专业邮件助手。\n请使用简洁、友善的语气回复。`}
         />
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
-          Leave blank to use the built-in default prompt.
+          留空则使用内置提示词。
         </div>
       </div>
 
@@ -366,12 +367,12 @@ function StepAI({ accountId, onNext }: { accountId: string; onNext: () => void }
 
       <button class="btn btn-primary" style="width:100%;height:44px;font-size:14px"
         onClick={save} disabled={saving.value}>
-        {saving.value ? 'Saving…' : 'Save & Finish →'}
+        {saving.value ? '保存中…' : '保存并完成 →'}
       </button>
 
       <button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:13px"
         onClick={onNext}>
-        Skip for now
+        暂时跳过
       </button>
     </div>
   );
@@ -383,18 +384,18 @@ function StepDone({ onFinish }: { onFinish: () => void }) {
   return (
     <div style="text-align:center;padding:16px 0">
       <div style="font-size:56px;margin-bottom:16px">🎉</div>
-      <h2 style="font-size:22px;font-weight:700;margin-bottom:10px">You're all set!</h2>
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:10px">设置完成！</h2>
       <p style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:32px;max-width:340px;margin-inline:auto">
-        Your Email Agent is ready. It will analyze incoming emails and draft replies based on your preferences.
+        邮件助手已就绪。它会分析收到的邮件，并按你的设置拟定回复。
       </p>
       <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
         <button class="btn btn-primary" style="width:220px;height:44px;font-size:14px"
           onClick={onFinish}>
           <span class="material-symbols-rounded">inbox</span>
-          Open Inbox
+          打开收件箱
         </button>
         <div style="font-size:12px;color:var(--text-muted)">
-          You can adjust everything in Settings anytime.
+          你可以随时在设置中调整。
         </div>
       </div>
     </div>
@@ -448,7 +449,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
               <rect x="2" y="6" width="20" height="14" rx="2" stroke="#fff" stroke-width="2" fill="none"/>
             </svg>
           </div>
-          <span style="font-size:15px;font-weight:700;color:var(--text-primary)">Email Agent</span>
+          <span style="font-size:15px;font-weight:700;color:var(--text-primary)">邮件助手</span>
         </div>
 
         <Steps current={step.value} total={3} />

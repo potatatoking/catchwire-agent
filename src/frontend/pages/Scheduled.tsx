@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -25,6 +26,7 @@ function relativeTime(iso: string): string {
   return past ? `${d}d ago` : `in ${d}d`;
 }
 
+const STATUS_LABELS: Record<Status, string> = { all: '全部', scheduled: '待发送', sent: '已发送', failed: '失败', cancelled: '已取消' };
 const FILTERS: Status[] = ['all', 'scheduled', 'sent', 'failed', 'cancelled'];
 
 export function Scheduled() {
@@ -71,7 +73,7 @@ export function Scheduled() {
     return (
       <div class="empty-state">
         <span class="material-symbols-rounded">schedule_send</span>
-        <p>Select an account first</p>
+        <p>请先选择邮箱账号</p>
       </div>
     );
   }
@@ -90,15 +92,15 @@ export function Scheduled() {
       {/* ── Header ── */}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div>
-          <div style="font-size:18px;font-weight:700;color:var(--text-primary)">Scheduled Emails</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text-primary)">定时邮件</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
-            Queued replies waiting to be sent
+            队列中等待发送的回复
           </div>
         </div>
         <button class="btn btn-outline" style="height:32px;padding:0 12px;font-size:12px"
           onClick={() => load()} disabled={loading.value}>
           <span class="material-symbols-rounded" style="font-size:14px">refresh</span>
-          Refresh
+          刷新
         </button>
       </div>
 
@@ -108,7 +110,7 @@ export function Scheduled() {
           <button key={f}
             class={`filter-chip${filter.value === f ? ' active' : ''}`}
             onClick={() => switchFilter(f)}>
-            {f}
+            {STATUS_LABELS[f]}
             {filter.value === 'all' && counts[f] > 0 && (
               <span class="count">({counts[f]})</span>
             )}
@@ -127,12 +129,12 @@ export function Scheduled() {
       {loading.value ? (
         <div class="empty-state">
           <span class="material-symbols-rounded">sync</span>
-          <p>Loading…</p>
+          <p>加载中…</p>
         </div>
       ) : items.value.length === 0 ? (
         <div class="empty-state">
           <span class="material-symbols-rounded">schedule_send</span>
-          <p>{filter.value === 'scheduled' ? 'No pending emails' : `No ${filter.value} emails`}</p>
+          <p>{filter.value === 'scheduled' ? '暂无待发送邮件' : '暂无符合筛选条件的邮件'}</p>
         </div>
       ) : (
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -151,19 +153,19 @@ export function Scheduled() {
                 {/* Content */}
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    {item.subject || '(no subject)'}
+                    {item.subject || '（无主题）'}
                   </div>
                   <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
                     To: {item.to_address}
                   </div>
                   <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
                     <span class="chip" style={`background:${chip.bg};color:${chip.color};font-size:10px`}>
-                      {item.status}
+                      {STATUS_LABELS[item.status as Status] ?? item.status}
                     </span>
                     <span style="font-size:11px;color:var(--text-muted)">
                       {item.status === 'scheduled'
-                        ? `Sends ${relativeTime(item.send_at)}`
-                        : new Date(item.send_at).toLocaleString()
+                        ? `发送时间：${relativeTime(item.send_at)}`
+                        : new Date(item.send_at).toLocaleString('zh-CN')
                       }
                     </span>
                   </div>
@@ -174,7 +176,7 @@ export function Scheduled() {
                   <button class="btn btn-ghost btn-danger" style="height:28px;padding:0 10px;font-size:12px;flex-shrink:0"
                     disabled={isCancelling}
                     onClick={() => cancel(item.id)}>
-                    {isCancelling ? 'Cancelling…' : 'Cancel'}
+                    {isCancelling ? '取消中…' : '取消'}
                   </button>
                 )}
               </div>

@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -39,8 +40,8 @@ export function Webhooks() {
   };
 
   const create = async () => {
-    if (!newUrl.value.trim()) { error.value = 'URL is required'; return; }
-    if (newEvents.value.length === 0) { error.value = 'Select at least one event'; return; }
+    if (!newUrl.value.trim()) { error.value = '请填写 URL'; return; }
+    if (newEvents.value.length === 0) { error.value = '请至少选择一个事件'; return; }
     saving.value = true;
     error.value  = '';
     try {
@@ -70,7 +71,7 @@ export function Webhooks() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this webhook?')) return;
+    if (!confirm('删除此 Webhook？')) return;
     try {
       await api.webhooks.delete(id);
       items.value = items.value.filter((i) => i.id !== id);
@@ -82,7 +83,7 @@ export function Webhooks() {
   return (
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div class="section-header" style="margin:0">Webhooks</div>
+        <div class="section-header" style="margin:0">Webhook</div>
         <button class="btn btn-primary" onClick={() => { showForm.value = !showForm.value; }}>
           + New Webhook
         </button>
@@ -96,16 +97,16 @@ export function Webhooks() {
 
       {showForm.value && (
         <div style="background:var(--surface-2);border-radius:var(--r-md);padding:16px;margin-bottom:16px">
-          <div style="font-weight:600;margin-bottom:12px">New Webhook</div>
+          <div style="font-weight:600;margin-bottom:12px">新建 Webhook</div>
           <div style="display:flex;flex-direction:column;gap:10px">
             <input class="md-input" value={newUrl.value}
               onInput={(e: any) => { newUrl.value = e.target.value; }}
               placeholder="https://your-server.com/webhook" />
             <input class="md-input" value={newSecret.value}
               onInput={(e: any) => { newSecret.value = e.target.value; }}
-              placeholder="Secret (optional — auto-generated if blank)" />
+              placeholder="签名密钥（可选，留空则自动生成）" />
             <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">EVENTS</div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px">事件</div>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
                 {ALL_EVENTS.map((ev) => (
                   <button
@@ -119,21 +120,21 @@ export function Webhooks() {
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-primary" onClick={create} disabled={saving.value}>
-                {saving.value ? 'Creating…' : 'Create Webhook'}
+                {saving.value ? '创建中…' : '创建 Webhook'}
               </button>
-              <button class="btn btn-ghost" onClick={() => { showForm.value = false; }}>Cancel</button>
+              <button class="btn btn-ghost" onClick={() => { showForm.value = false; }}>取消</button>
             </div>
           </div>
         </div>
       )}
 
       {loading.value ? (
-        <div class="empty-state"><span class="material-symbols-rounded">sync</span><p>Loading…</p></div>
+        <div class="empty-state"><span class="material-symbols-rounded">sync</span><p>加载中…</p></div>
       ) : items.value.length === 0 ? (
         <div class="empty-state">
           <span class="material-symbols-rounded">webhook</span>
-          <p>No webhooks configured</p>
-          <p style="font-size:12px">Receive HTTP POST notifications when emails arrive or are replied to.</p>
+          <p>尚未配置 Webhook</p>
+          <p style="font-size:12px">收到邮件或发送回复时，通过 HTTP POST 接收通知。</p>
         </div>
       ) : (
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -153,15 +154,15 @@ export function Webhooks() {
                 <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
                   Created {new Date(wh.created_at).toLocaleDateString()} ·{' '}
                   <span style={wh.enabled ? 'color:var(--accent)' : 'color:var(--text-muted)'}>
-                    {wh.enabled ? 'Active' : 'Disabled'}
+                    {wh.enabled ? '已启用' : '已停用'}
                   </span>
                 </div>
               </div>
               <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
                 <button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onClick={() => toggle(wh)}>
-                  {wh.enabled ? 'Disable' : 'Enable'}
+                  {wh.enabled ? '停用' : '启用'}
                 </button>
-                <button class="btn btn-ghost btn-danger" style="font-size:12px" onClick={() => remove(wh.id)}>Delete</button>
+                <button class="btn btn-ghost btn-danger" style="font-size:12px" onClick={() => remove(wh.id)}>删除</button>
               </div>
             </div>
           ))}
@@ -169,7 +170,7 @@ export function Webhooks() {
       )}
 
       <div style="margin-top:20px;padding:14px;background:var(--surface-2);border-radius:var(--r-md);font-size:12px;color:var(--text-muted)">
-        <strong>Delivery:</strong> Each webhook request includes header <code>X-EmailAgent-Signature: sha256=&lt;hmac&gt;</code> signed with your secret.
+        <strong>推送：</strong> 每个 Webhook 请求都包含签名请求头 <code>X-EmailAgent-Signature: sha256=&lt;hmac&gt;</code>，签名使用你设置的密钥生成。
         Timeout: 10 seconds.
       </div>
     </div>

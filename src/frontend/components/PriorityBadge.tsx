@@ -1,10 +1,11 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 
 const LABELS: Record<string, string> = {
-  critical: 'Critical',
-  high:     'High',
-  medium:   'Medium',
-  low:      'Low',
+  critical: '紧急',
+  high:     '高',
+  medium:   '中',
+  low:      '低',
 };
 
 export function PriorityBadge({ priority }: { priority: string }) {

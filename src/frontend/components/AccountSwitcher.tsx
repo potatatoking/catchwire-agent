@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -65,7 +66,7 @@ export function AccountSwitcher() {
         ">
           {/* Current account header */}
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface-2)">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px">Signed in as</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px">当前登录</div>
             <div style="font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
               {current.email_address}
             </div>
@@ -76,7 +77,7 @@ export function AccountSwitcher() {
           {accounts.value.length > 1 && (
             <div style="padding:4px 0;border-bottom:1px solid var(--border)">
               <div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase">
-                Switch Account
+                切换账号
               </div>
               {accounts.value
                 .filter(a => a.account_id !== selectedAccount.value)
@@ -121,7 +122,7 @@ export function AccountSwitcher() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
               <span class="material-symbols-rounded" style="font-size:16px;color:var(--text-muted)">settings</span>
-              Settings
+              设置
             </a>
 
             {/* Logout */}
@@ -137,7 +138,7 @@ export function AccountSwitcher() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
               <span class="material-symbols-rounded" style="font-size:16px">logout</span>
-              Sign out
+              退出登录
             </button>
           </div>
         </div>

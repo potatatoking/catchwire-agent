@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useSignal } from '@preact/signals';
 import { api, setToken } from '../api/client.ts';
@@ -22,7 +23,7 @@ export function Login({ onLogin }: Props) {
     return (
       <div class="login-container">
         <div class="login-card">
-          <p>Loading…</p>
+          <p>加载中…</p>
         </div>
       </div>
     );
@@ -37,7 +38,7 @@ export function Login({ onLogin }: Props) {
 
     try {
       if (setupMode && password.value !== confirm.value) {
-        error.value = 'Passwords do not match';
+        error.value = '两次输入的密码不一致';
         return;
       }
       const fn = setupMode ? api.auth.setup : api.auth.login;
@@ -45,7 +46,7 @@ export function Login({ onLogin }: Props) {
       setToken(token);
       onLogin();
     } catch (err: any) {
-      error.value = err.message ?? 'Login failed';
+      error.value = err.message ?? '登录失败';
     } finally {
       loading.value = false;
     }
@@ -56,13 +57,13 @@ export function Login({ onLogin }: Props) {
       <div class="login-card">
         <div class="login-logo">
           <span class="login-icon">📧</span>
-          <h1>Email Agent</h1>
-          {setupMode && <p class="login-subtitle">Create admin account</p>}
+          <h1>邮件助手</h1>
+          {setupMode && <p class="login-subtitle">创建管理员账号</p>}
         </div>
 
         <form onSubmit={handleSubmit} class="login-form">
           <div class="form-field">
-            <label for="username">Username</label>
+            <label for="username">用户名</label>
             <input
               id="username"
               type="text"
@@ -75,7 +76,7 @@ export function Login({ onLogin }: Props) {
           </div>
 
           <div class="form-field">
-            <label for="password">Password</label>
+            <label for="password">密码</label>
             <input
               id="password"
               type="password"
@@ -89,7 +90,7 @@ export function Login({ onLogin }: Props) {
 
           {setupMode && (
             <div class="form-field">
-              <label for="confirm">Confirm Password</label>
+              <label for="confirm">确认密码</label>
               <input
                 id="confirm"
                 type="password"
@@ -105,7 +106,7 @@ export function Login({ onLogin }: Props) {
           {error.value && <p class="login-error">{error.value}</p>}
 
           <button type="submit" class="login-btn" disabled={loading.value}>
-            {loading.value ? 'Please wait…' : setupMode ? 'Create Account' : 'Sign In'}
+            {loading.value ? '请稍候…' : setupMode ? '创建账号' : '登录'}
           </button>
         </form>
       </div>

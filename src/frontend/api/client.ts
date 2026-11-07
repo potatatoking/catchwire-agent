@@ -1,4 +1,16 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 const BASE = '/api';
+
+const ERROR_MESSAGES: Record<string, string> = {
+  'username and password are required': '请填写用户名和密码',
+  'Username must be at least 3 characters': '用户名至少需要 3 个字符',
+  'Password must be at least 8 characters': '密码至少需要 8 个字符',
+  'Setup already complete': '已完成初始设置',
+  'Setup failed': '初始设置失败',
+  'Invalid username or password': '用户名或密码错误',
+  'Internal error': '服务器内部错误',
+  'Invalid or expired token': '登录已失效，请重新登录',
+};
 
 export const TOKEN_KEY = 'ea_token';
 
@@ -26,10 +38,23 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
   if (res.status === 401) {
     clearToken();
     window.dispatchEvent(new CustomEvent('auth:logout'));
-    throw new Error('Unauthenticated');
+    throw new Error(token ? '登录已失效，请重新登录' : '身份验证失败，请检查账号和密码');
   }
 
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    let message = body;
+    if (res.headers.get('Content-Type')?.includes('application/json')) {
+      try {
+        const data = JSON.parse(body) as { error?: unknown };
+        if (typeof data.error === 'string') message = data.error;
+      } catch {
+        // Keep the response text if the server returned invalid JSON.
+      }
+    }
+    const translated = ERROR_MESSAGES[message] ?? message;
+    throw new Error(translated || '请求失败（HTTP ' + res.status + '）');
+  }
   return res.json() as Promise<T>;
 }
 

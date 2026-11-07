@@ -1,16 +1,17 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 
 const ITEMS = [
-  { icon: 'inbox',         label: 'Inbox',      href: '/agent/inbox'           },
-  { icon: 'forum',         label: 'Threads',    href: '/agent/threads'         },
-  { icon: 'bar_chart',     label: 'Analytics',  href: '/agent/analytics'       },
-  { icon: 'description',   label: 'Templates',  href: '/agent/email-templates' },
-  { icon: 'psychology',    label: 'Prompts',    href: '/agent/templates'       },
-  { icon: 'schedule_send', label: 'Scheduled',  href: '/agent/scheduled'       },
-  { icon: 'webhook',       label: 'Webhooks',   href: '/agent/webhooks'        },
-  { icon: 'extension',     label: 'Plugins',    href: '/agent/plugins'         },
-  { icon: 'tune',          label: 'Overrides',  href: '/agent/overrides'       },
-  { icon: 'smart_toy',     label: 'Playground', href: '/agent/playground'      },
+  { icon: 'inbox',         label: '收件箱',      href: '/agent/inbox'           },
+  { icon: 'forum',         label: '邮件会话',    href: '/agent/threads'         },
+  { icon: 'bar_chart',     label: '统计分析',  href: '/agent/analytics'       },
+  { icon: 'description',   label: '模板',  href: '/agent/email-templates' },
+  { icon: 'psychology',    label: '提示词',    href: '/agent/templates'       },
+  { icon: 'schedule_send', label: '定时发送',  href: '/agent/scheduled'       },
+  { icon: 'webhook',       label: 'Webhook',   href: '/agent/webhooks'        },
+  { icon: 'extension',     label: '插件',    href: '/agent/plugins'         },
+  { icon: 'tune',          label: '发件人规则',  href: '/agent/overrides'       },
+  { icon: 'smart_toy',     label: '调试台', href: '/agent/playground'      },
 ];
 
 export function NavRail({ currentPath }: { currentPath: string }) {
@@ -38,7 +39,7 @@ export function NavRail({ currentPath }: { currentPath: string }) {
       <div class="nav-spacer" />
 
       <a href="/agent/settings" class={`nav-item ${currentPath === '/agent/settings' ? 'active' : ''}`}
-        data-label="Settings" title="Settings">
+        data-label="设置" title="设置">
         <span class="material-symbols-rounded">settings</span>
       </a>
     </nav>

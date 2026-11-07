@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal, computed } from '@preact/signals';
@@ -7,16 +8,16 @@ import { api, type PromptProfile } from '../api/client.ts';
 // ── Intent definitions ──────────────────────────────────────────────────────
 
 const INTENTS: Array<{ id: string; label: string; icon: string; color: string; hint: string }> = [
-  { id: 'payment',          label: 'Payment / Invoice', icon: 'payments',       color: '#D97706', hint: 'Billing, invoices, overdue payments' },
-  { id: 'complaint',        label: 'Complaint / Support', icon: 'support_agent', color: '#DC2626', hint: 'Issues, dissatisfaction, help requests' },
-  { id: 'meeting_request',  label: 'Meeting / Call',    icon: 'event',          color: '#7C3AED', hint: 'Scheduling, calendar invites, calls' },
-  { id: 'follow_up',        label: 'Follow-up',         icon: 'update',         color: '#0891B2', hint: 'Reminders, checking status, nudges' },
-  { id: 'action_required',  label: 'Action Required',   icon: 'task_alt',       color: '#059669', hint: 'Tasks, decisions, approvals needed' },
-  { id: 'question',         label: 'Question',          icon: 'help',           color: '#1A73E8', hint: 'Queries, clarifications, info requests' },
-  { id: 'deadline',         label: 'Deadline',          icon: 'schedule',       color: '#DC2626', hint: 'Time-sensitive items, urgent requests' },
-  { id: 'partnership',      label: 'Partnership / Sales', icon: 'handshake',    color: '#059669', hint: 'Business proposals, collaborations' },
-  { id: 'hiring',           label: 'Hiring / HR',       icon: 'person_add',     color: '#7C3AED', hint: 'Job applications, interviews, HR matters' },
-  { id: 'fyi',              label: 'FYI / Update',      icon: 'info',           color: '#94A3B8', hint: 'Informational, no reply needed' },
+  { id: 'payment',          label: '付款／发票', icon: 'payments',       color: '#D97706', hint: '账单、发票和逾期付款' },
+  { id: 'complaint',        label: '投诉／支持', icon: 'support_agent', color: '#DC2626', hint: '问题、投诉和求助' },
+  { id: 'meeting_request',  label: '会议／通话',    icon: 'event',          color: '#7C3AED', hint: '日程安排、日历邀请和通话' },
+  { id: 'follow_up',        label: '跟进',         icon: 'update',         color: '#0891B2', hint: '提醒和进度查询' },
+  { id: 'action_required',  label: '需要处理',   icon: 'task_alt',       color: '#059669', hint: '任务、决策和待审批事项' },
+  { id: 'question',         label: '咨询',          icon: 'help',           color: '#1A73E8', hint: '提问、澄清和信息请求' },
+  { id: 'deadline',         label: '截止日期',          icon: 'schedule',       color: '#DC2626', hint: '有时限的事项和紧急请求' },
+  { id: 'partnership',      label: '合作／销售', icon: 'handshake',    color: '#059669', hint: '商业提案和合作' },
+  { id: 'hiring',           label: '招聘／人事',       icon: 'person_add',     color: '#7C3AED', hint: '求职、面试和人事事项' },
+  { id: 'fyi',              label: '知会／更新',      icon: 'info',           color: '#94A3B8', hint: '仅供知悉，无需回复' },
 ];
 
 // ── Default global prompt ───────────────────────────────────────────────────
@@ -79,7 +80,7 @@ export function Templates() {
 
   const saveGlobal = async (activate: boolean) => {
     if (!globalName.value.trim() || !globalBody.value.trim()) {
-      errMsg.value = 'Name and prompt body are required'; return;
+      errMsg.value = '请填写名称和提示词正文'; return;
     }
     saving.value = 'new';
     try {
@@ -135,7 +136,7 @@ export function Templates() {
   };
 
   const saveIntent = async () => {
-    if (!intentBody.value.trim()) { errMsg.value = 'Prompt body is required'; return; }
+    if (!intentBody.value.trim()) { errMsg.value = '请填写提示词正文'; return; }
     const intentId = editingIntent.value;
     saving.value   = intentId;
     const existing = intentMap.value[intentId];
@@ -164,7 +165,7 @@ export function Templates() {
   };
 
   if (!selectedAccount.value) {
-    return <div class="empty-state"><span class="material-symbols-rounded">psychology</span><p>Select an account first</p></div>;
+    return <div class="empty-state"><span class="material-symbols-rounded">psychology</span><p>请先选择邮箱账号</p></div>;
   }
 
   return (
@@ -172,18 +173,18 @@ export function Templates() {
 
       {/* ── Page header ── */}
       <div style="margin-bottom:20px">
-        <div style="font-size:18px;font-weight:700">AI Prompt System</div>
+        <div style="font-size:18px;font-weight:700">AI 提示词</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
-          Control exactly how the AI reads and responds to emails — globally and per email type
+          为所有邮件或指定邮件类型配置 AI 的阅读和回复方式
         </div>
       </div>
 
       {/* ── How it works ── */}
       <div style="background:var(--accent-subtle);border:1px solid var(--accent);border-radius:var(--r-md);padding:12px 14px;margin-bottom:20px;font-size:12px;color:var(--text-secondary);line-height:1.7">
-        <strong style="color:var(--accent)">How prompts stack:</strong>
-        {' '}<strong>Global</strong> prompt runs first for every email.
-        Then the matching <strong>Intent</strong> prompt is added on top (payment rules for payment emails, complaint rules for complaint emails, etc.).
-        Together they form the final instruction set the AI follows.
+        <strong style="color:var(--accent)">提示词的叠加方式：</strong>
+        {' '}每封邮件首先应用<strong>全局提示词</strong>。
+        接着叠加与邮件<strong>意图</strong>匹配的提示词，例如付款邮件使用付款规则，投诉邮件使用投诉规则。
+        AI 会按组合后的指令处理邮件。
       </div>
 
       {/* ── Tabs ── */}
@@ -198,7 +199,7 @@ export function Templates() {
               border-bottom:2px solid ${tab.value === t ? 'var(--accent)' : 'transparent'};
               margin-bottom:-2px;
             `}>
-            {t === 'global' ? 'Global Prompt' : 'Per-Intent Prompts'}
+            {t === 'global' ? '全局提示词' : '按意图设置的提示词'}
             {t === 'global' && activeGlobal.value && (
               <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--c-low);margin-left:6px;vertical-align:middle" />
             )}
@@ -232,18 +233,18 @@ export function Templates() {
             </span>
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600">
-                {activeGlobal.value ? `Active: ${activeGlobal.value.name}` : 'No global prompt — using built-in default'}
+                {activeGlobal.value ? `已启用：${activeGlobal.value.name}` : '未设置全局提示词，正在使用内置默认提示词'}
               </div>
               <div style="font-size:11px;color:var(--text-muted)">
                 {activeGlobal.value
-                  ? 'Injected into every AI call for this account'
-                  : 'Create and activate a global prompt to customise AI behaviour'}
+                  ? '用于此账号的每次 AI 调用'
+                  : '创建并启用全局提示词以自定义 AI 行为'}
               </div>
             </div>
             <div style="display:flex;gap:6px">
               {activeGlobal.value && (
                 <button class="btn btn-ghost" style="height:28px;font-size:12px" onClick={deactivateAll}>
-                  Reset to default
+                  恢复默认
                 </button>
               )}
               <button class="btn btn-primary" style="height:32px;font-size:12px"
@@ -254,7 +255,7 @@ export function Templates() {
                   showNewGlobal.value = true;
                 }}>
                 <span class="material-symbols-rounded" style="font-size:14px">add</span>
-                New
+                新建
               </button>
             </div>
           </div>
@@ -263,32 +264,32 @@ export function Templates() {
           {showNewGlobal.value && (
             <div class="card" style="margin-bottom:16px">
               <div style="font-weight:600;font-size:13px;margin-bottom:14px">
-                {editingGlobalId.value ? 'Edit Global Prompt' : 'New Global Prompt'}
+                {editingGlobalId.value ? '编辑全局提示词' : '新建全局提示词'}
               </div>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                   <div>
-                    <div class="field-label">Name *</div>
+                    <div class="field-label">名称 *</div>
                     <input class="md-input" value={globalName.value}
                       onInput={(e: any) => { globalName.value = e.target.value; }}
-                      placeholder="e.g. Default, Formal, VIP Clients" style="margin-top:5px" />
+                      placeholder="例如：默认、正式、重要客户" style="margin-top:5px" />
                   </div>
                   <div>
-                    <div class="field-label">Description</div>
+                    <div class="field-label">说明</div>
                     <input class="md-input" value={globalDesc.value}
                       onInput={(e: any) => { globalDesc.value = e.target.value; }}
-                      placeholder="When to use (optional)" style="margin-top:5px" />
+                      placeholder="适用场景（可选）" style="margin-top:5px" />
                   </div>
                 </div>
                 <div>
-                  <div class="field-label">System Prompt *</div>
+                  <div class="field-label">系统提示词 *</div>
                   <div style="font-size:11px;color:var(--text-muted);margin:4px 0 6px">
-                    This text replaces the built-in base instructions. The AI will follow these rules for every email.
+                    这段文字会替换内置的基础指令，AI 会在处理每封邮件时遵循它。
                   </div>
                   <textarea class="edit-area" rows={10}
                     value={globalBody.value}
                     onInput={(e: any) => { globalBody.value = e.target.value; }}
-                    placeholder="You are a professional email assistant for Acme Corp. You always..."
+                    placeholder="你是公司的专业邮件助手。请始终…"
                     style="font-family:var(--mono);font-size:12px;line-height:1.6"
                   />
                   <div style="font-size:11px;color:var(--text-muted)">{globalBody.value.length} chars</div>
@@ -297,15 +298,15 @@ export function Templates() {
                   <button class="btn btn-primary" style="height:34px"
                     onClick={() => saveGlobal(true)} disabled={!!saving.value}>
                     <span class="material-symbols-rounded" style="font-size:15px">check</span>
-                    {saving.value ? 'Saving…' : 'Save & Activate'}
+                    {saving.value ? '保存中…' : '保存并启用'}
                   </button>
                   <button class="btn btn-outline" style="height:34px"
                     onClick={() => saveGlobal(false)} disabled={!!saving.value}>
-                    Save only
+                    仅保存
                   </button>
                   <button class="btn btn-ghost" style="height:34px"
                     onClick={() => { showNewGlobal.value = false; editingGlobalId.value = ''; }}>
-                    Cancel
+                    取消
                   </button>
                 </div>
               </div>
@@ -314,12 +315,12 @@ export function Templates() {
 
           {/* Saved profiles */}
           {loading.value ? (
-            <div class="empty-state"><span class="material-symbols-rounded">sync</span><p>Loading…</p></div>
+            <div class="empty-state"><span class="material-symbols-rounded">sync</span><p>加载中…</p></div>
           ) : globalProfiles.value.length === 0 && !showNewGlobal.value ? (
             <div class="empty-state" style="padding:32px">
               <span class="material-symbols-rounded">psychology</span>
-              <p>No global prompts yet</p>
-              <p style="font-size:12px">Click "New" above to create your first global prompt.</p>
+              <p>暂无全局提示词</p>
+              <p style="font-size:12px">点击上方的「新建」创建全局提示词。</p>
             </div>
           ) : (
             <div style="display:flex;flex-direction:column;gap:8px">
@@ -330,7 +331,7 @@ export function Templates() {
                     <div style="flex:1;min-width:0">
                       <div style="display:flex;align-items:center;gap:8px">
                         <span style="font-size:13px;font-weight:600">{p.name}</span>
-                        {p.is_active && <span class="chip" style="background:var(--c-low-bg);color:var(--c-low);font-size:10px">Active</span>}
+                        {p.is_active && <span class="chip" style="background:var(--c-low-bg);color:var(--c-low);font-size:10px">已启用</span>}
                       </div>
                       {p.description && <div style="font-size:11px;color:var(--text-muted)">{p.description}</div>}
                       <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
@@ -338,7 +339,7 @@ export function Templates() {
                       </div>
                     </div>
                     <div style="display:flex;gap:6px;flex-shrink:0">
-                      <button class="btn btn-ghost" style="height:28px;padding:0 8px" onClick={() => startEditGlobal(p)} title="Edit">
+                      <button class="btn btn-ghost" style="height:28px;padding:0 8px" onClick={() => startEditGlobal(p)} title="编辑">
                         <span class="material-symbols-rounded" style="font-size:16px">edit</span>
                       </button>
                       {!p.is_active && (
@@ -360,11 +361,11 @@ export function Templates() {
                   </div>
                   {deleteId.value === p.id && (
                     <div style="padding:10px 16px;border-top:1px solid var(--border);background:var(--c-critical-bg);display:flex;align-items:center;gap:10px">
-                      <span style="font-size:13px;color:var(--c-critical);flex:1">Delete «{p.name}»?</span>
+                      <span style="font-size:13px;color:var(--c-critical);flex:1">删除「{p.name}」？</span>
                       <button class="btn" style="height:28px;font-size:12px;background:var(--c-critical);color:#fff;padding:0 12px"
-                        onClick={() => deleteProfile(p.id)}>Delete</button>
+                        onClick={() => deleteProfile(p.id)}>删除</button>
                       <button class="btn btn-ghost" style="height:28px;font-size:12px"
-                        onClick={() => { deleteId.value = ''; }}>Cancel</button>
+                        onClick={() => { deleteId.value = ''; }}>取消</button>
                     </div>
                   )}
                 </div>
@@ -378,8 +379,8 @@ export function Templates() {
       {tab.value === 'intent' && (
         <div>
           <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">
-            Each rule below is injected automatically when the AI detects that email type.
-            Prompts marked <span style="color:var(--c-low);font-weight:600">●</span> are active.
+            AI 识别到对应的邮件类型时，会自动使用相应规则。
+            标记 <span style="color:var(--c-low);font-weight:600">●</span> 的提示词已启用。
           </div>
 
           {/* Intent grid */}
@@ -418,7 +419,7 @@ export function Templates() {
                     <div style="display:flex;gap:6px;flex-shrink:0" onClick={(e) => e.stopPropagation()}>
                       {existing && (
                         <button class="btn btn-ghost btn-danger" style="height:28px;padding:0 8px"
-                          onClick={() => deleteIntent(intent.id)} title="Remove rule">
+                          onClick={() => deleteIntent(intent.id)} title="移除规则">
                           <span class="material-symbols-rounded" style="font-size:16px">delete</span>
                         </button>
                       )}
@@ -427,7 +428,7 @@ export function Templates() {
                           if (isEditing) editingIntent.value = '';
                           else openIntentEditor(intent.id);
                         }}>
-                        {isEditing ? 'Cancel' : existing ? 'Edit' : '+ Add Rule'}
+                        {isEditing ? '取消' : existing ? '编辑' : '＋ 添加规则'}
                       </button>
                     </div>
                   </div>
@@ -436,7 +437,7 @@ export function Templates() {
                   {isEditing && (
                     <div style="padding:0 16px 16px;border-top:1px solid var(--border)">
                       <div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px">
-                        Rules to follow specifically when the email intent is <strong>{intent.label}</strong>:
+                        当邮件意图为「<strong>{intent.label}</strong>」时应用的规则：
                       </div>
                       <textarea class="edit-area" rows={6}
                         value={intentBody.value}
@@ -448,11 +449,11 @@ export function Templates() {
                         <button class="btn btn-primary" style="height:32px;font-size:12px"
                           onClick={saveIntent} disabled={isSaving || !intentBody.value.trim()}>
                           <span class="material-symbols-rounded" style="font-size:14px">check</span>
-                          {isSaving ? 'Saving…' : 'Save Rule'}
+                          {isSaving ? '保存中…' : '保存规则'}
                         </button>
                         <button class="btn btn-ghost" style="height:32px;font-size:12px"
                           onClick={() => { editingIntent.value = ''; }}>
-                          Cancel
+                          取消
                         </button>
                       </div>
                     </div>
@@ -476,5 +477,5 @@ function getIntentPlaceholder(intentId: string): string {
     partnership:     `- Express genuine interest but avoid over-committing\n- Always ask 1-2 clarifying questions about scope/timeline\n- End with a clear next step (call, proposal, etc.)`,
     hiring:          `- Be warm and professional\n- For applications: acknowledge receipt, give clear timeline\n- For interview requests: confirm details (date, format, who attends)`,
   };
-  return EXAMPLES[intentId] ?? `Rules to apply specifically for ${intentId} emails…`;
+  return EXAMPLES[intentId] ?? `为「${intentId}」类邮件添加规则…`;
 }

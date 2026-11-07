@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal, computed } from '@preact/signals';
@@ -65,7 +66,7 @@ export function EmailTemplates() {
 
   const save = async () => {
     if (!form.value.name.trim() || !form.value.body_template.trim()) {
-      errMsg.value = 'Name and body are required'; return;
+      errMsg.value = '请填写名称和正文'; return;
     }
     saving.value = true;
     errMsg.value = '';
@@ -133,7 +134,7 @@ export function EmailTemplates() {
     return (
       <div class="empty-state">
         <span class="material-symbols-rounded">description</span>
-        <p>Select an account first</p>
+        <p>请先选择邮箱账号</p>
       </div>
     );
   }
@@ -144,14 +145,14 @@ export function EmailTemplates() {
       {/* ── Header ── */}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div>
-          <div style="font-size:18px;font-weight:700">Email Templates</div>
+          <div style="font-size:18px;font-weight:700">邮件模板</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
-            Reusable reply templates with <code style="font-size:11px;background:var(--surface-2);padding:1px 5px;border-radius:4px">{'{{variable}}'}</code> placeholders
+            可复用的回复模板，支持 <code style="font-size:11px;background:var(--surface-2);padding:1px 5px;border-radius:4px">{'{{variable}}'}</code> 占位符
           </div>
         </div>
         <button class="btn btn-primary" onClick={openNew}>
           <span class="material-symbols-rounded">add</span>
-          New Template
+          新建模板
         </button>
       </div>
 
@@ -167,29 +168,29 @@ export function EmailTemplates() {
       {showForm.value && (
         <div class="card" style="margin-bottom:20px">
           <div style="font-weight:600;font-size:14px;margin-bottom:14px">
-            {editingId.value ? 'Edit Template' : 'New Template'}
+            {editingId.value ? '编辑模板' : '新建模板'}
           </div>
           <div style="display:flex;flex-direction:column;gap:12px">
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div>
-                <div class="field-label">Name *</div>
+                <div class="field-label">名称 *</div>
                 <input class="md-input" style="margin-top:5px"
                   value={form.value.name}
                   onInput={(e: any) => { form.value = { ...form.value, name: e.target.value }; }}
-                  placeholder="e.g. Meeting Acceptance, Payment Ack…" />
+                  placeholder="例如：确认会议、确认收款…" />
               </div>
               <div>
-                <div class="field-label">Description</div>
+                <div class="field-label">说明</div>
                 <input class="md-input" style="margin-top:5px"
                   value={form.value.description}
                   onInput={(e: any) => { form.value = { ...form.value, description: e.target.value }; }}
-                  placeholder="When to use (optional)" />
+                  placeholder="适用场景（可选）" />
               </div>
             </div>
 
             <div>
-              <div class="field-label">Tone</div>
+              <div class="field-label">语气</div>
               <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
                 {TONES.map((t) => (
                   <button key={t}
@@ -203,7 +204,7 @@ export function EmailTemplates() {
             </div>
 
             <div>
-              <div class="field-label">Body Template *</div>
+              <div class="field-label">正文模板 *</div>
               <div style="font-size:11px;color:var(--text-muted);margin:4px 0 6px">
                 Use <code style="background:var(--surface-2);padding:1px 4px;border-radius:3px">{'{{variable_name}}'}</code> for dynamic values — they'll be filled in at send time.
               </div>
@@ -228,9 +229,9 @@ export function EmailTemplates() {
             <div style="display:flex;gap:8px;margin-top:4px">
               <button class="btn btn-primary" onClick={save} disabled={saving.value}>
                 <span class="material-symbols-rounded" style="font-size:15px">check</span>
-                {saving.value ? 'Saving…' : editingId.value ? 'Save Changes' : 'Create Template'}
+                {saving.value ? '保存中…' : editingId.value ? '保存更改' : '创建模板'}
               </button>
-              <button class="btn btn-ghost" onClick={cancel}>Cancel</button>
+              <button class="btn btn-ghost" onClick={cancel}>取消</button>
             </div>
           </div>
         </div>
@@ -240,16 +241,16 @@ export function EmailTemplates() {
       {loading.value ? (
         <div class="empty-state">
           <span class="material-symbols-rounded">sync</span>
-          <p>Loading…</p>
+          <p>加载中…</p>
         </div>
       ) : templates.value.length === 0 && !showForm.value ? (
         <div class="empty-state" style="padding:48px">
           <span class="material-symbols-rounded" style="font-size:40px">description</span>
-          <p>No templates yet</p>
-          <p style="font-size:12px;color:var(--text-muted)">Create reusable reply templates with dynamic placeholders.</p>
+          <p>暂无模板</p>
+          <p style="font-size:12px;color:var(--text-muted)">创建包含变量的可复用回复模板。</p>
           <button class="btn btn-primary" style="margin-top:12px" onClick={openNew}>
             <span class="material-symbols-rounded">add</span>
-            New Template
+            新建模板
           </button>
         </div>
       ) : (
@@ -289,17 +290,17 @@ export function EmailTemplates() {
                     )}
                   </div>
                   <div style="display:flex;gap:6px;flex-shrink:0">
-                    <button class="btn btn-ghost" style="height:28px;padding:0 8px" title="Test render"
+                    <button class="btn btn-ghost" style="height:28px;padding:0 8px" title="测试预览"
                       onClick={() => openTest(t)}>
                       <span class="material-symbols-rounded" style="font-size:16px">
                         {isTesting ? 'expand_less' : 'play_arrow'}
                       </span>
                     </button>
-                    <button class="btn btn-ghost" style="height:28px;padding:0 8px" title="Edit"
+                    <button class="btn btn-ghost" style="height:28px;padding:0 8px" title="编辑"
                       onClick={() => openEdit(t)}>
                       <span class="material-symbols-rounded" style="font-size:16px">edit</span>
                     </button>
-                    <button class="btn btn-ghost btn-danger" style="height:28px;padding:0 8px" title="Delete"
+                    <button class="btn btn-ghost btn-danger" style="height:28px;padding:0 8px" title="删除"
                       onClick={() => { deleteId.value = isDeleting ? '' : t.id; }}>
                       <span class="material-symbols-rounded" style="font-size:16px">delete</span>
                     </button>
@@ -316,11 +317,11 @@ export function EmailTemplates() {
                 {/* Delete confirm */}
                 {isDeleting && (
                   <div style="padding:10px 16px;border-top:1px solid var(--border);background:var(--c-critical-bg);display:flex;align-items:center;gap:10px">
-                    <span style="font-size:13px;color:var(--c-critical);flex:1">Delete «{t.name}»?</span>
+                    <span style="font-size:13px;color:var(--c-critical);flex:1">删除「{t.name}」？</span>
                     <button class="btn" style="height:28px;font-size:12px;background:var(--c-critical);color:#fff;padding:0 12px"
-                      onClick={() => remove(t.id)}>Delete</button>
+                      onClick={() => remove(t.id)}>删除</button>
                     <button class="btn btn-ghost" style="height:28px;font-size:12px"
-                      onClick={() => { deleteId.value = ''; }}>Cancel</button>
+                      onClick={() => { deleteId.value = ''; }}>取消</button>
                   </div>
                 )}
 
@@ -328,7 +329,7 @@ export function EmailTemplates() {
                 {isTesting && (
                   <div style="padding:14px 16px;border-top:1px solid var(--border);background:var(--surface-2)">
                     <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:10px">
-                      Test Render
+                      测试预览
                     </div>
                     {vars.length > 0 ? (
                       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:12px">
@@ -343,14 +344,14 @@ export function EmailTemplates() {
                         ))}
                       </div>
                     ) : (
-                      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">No variables — renders as-is.</div>
+                      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">此模板没有变量，将原样显示。</div>
                     )}
                     <button class="btn btn-outline" style="height:30px;font-size:12px"
                       onClick={() => runTest(t.id)} disabled={testLoading.value}>
                       <span class="material-symbols-rounded" style="font-size:14px">
                         {testLoading.value ? 'sync' : 'play_arrow'}
                       </span>
-                      {testLoading.value ? 'Rendering…' : 'Render'}
+                      {testLoading.value ? '预览生成中…' : '生成预览'}
                     </button>
                     {testResult.value && (
                       <pre style="margin-top:12px;padding:12px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--r-md);font-size:12px;font-family:var(--mono);white-space:pre-wrap;line-height:1.6;color:var(--text-primary)">

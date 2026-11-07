@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -54,7 +55,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
     if (!text || loading.value) return;
 
     const accountId = selectedAccount.value;
-    if (!accountId) { alert('Select an account first'); return; }
+    if (!accountId) { alert('请先选择邮箱账号'); return; }
 
     input.value  = '';
     loading.value = true;
@@ -97,7 +98,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
       const data = await api.chat.execute(accountId, task);
       messages.value = [
         ...messages.value.slice(0, -1),
-        { id: uid(), role: 'assistant', content: data.reply || 'Done!' },
+        { id: uid(), role: 'assistant', content: data.reply || '已完成！' },
       ];
     } catch {
       messages.value = [
@@ -114,10 +115,10 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
   }
 
   const SUGGESTIONS = [
-    'Summarize my invoices',
-    'Find emails from Alex',
-    'Unsubscribe all newsletters',
-    'What needs action today?',
+    '总结我的发票邮件',
+    '查找 Alex 发来的邮件',
+    '取消订阅所有新闻简报',
+    '今天有哪些邮件需要处理？',
   ];
 
   return (
@@ -126,9 +127,9 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
       <div class="chat-header">
         <div class="chat-header-title">
           <span class="material-symbols-rounded" style="font-size:18px;color:var(--accent)">smart_toy</span>
-          <span>Agent Chat</span>
+          <span>助手对话</span>
         </div>
-        <button class="icon-btn" onClick={onClose} title="Close">
+        <button class="icon-btn" onClick={onClose} title="关闭">
           <span class="material-symbols-rounded">close</span>
         </button>
       </div>
@@ -154,13 +155,13 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
                     Yes, do it
                   </button>
                   <button class="chat-confirm-no" onClick={() => {
-                    messages.value = [...messages.value, { id: uid(), role: 'assistant', content: 'Cancelled.' }];
+                    messages.value = [...messages.value, { id: uid(), role: 'assistant', content: '已取消。' }];
                     // Remove the task from this message so buttons disappear
                     messages.value = messages.value.map(m =>
                       m.id === msg.id ? { ...m, task: undefined, action: 'done' } : m
                     );
                   }}>
-                    Cancel
+                    取消
                   </button>
                 </div>
               )}
@@ -186,7 +187,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
         <textarea
           ref={inputRef}
           class="chat-input"
-          placeholder="Ask or give a task…"
+          placeholder="输入问题或任务…"
           value={input.value}
           onInput={(e) => { input.value = (e.target as HTMLTextAreaElement).value; }}
           onKeyDown={onKeyDown}

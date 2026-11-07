@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -138,7 +139,7 @@ export function PluginBuilder() {
               border-bottom:2px solid ${pageTab.value === t ? 'var(--accent)' : 'transparent'};
               margin-bottom:-2px;
             `}>
-            {t === 'build' ? 'Build Plugin' : 'Installed Plugins'}
+            {t === 'build' ? '构建插件' : '已安装的插件'}
             {t === 'manage' && plugins.value.length > 0 && (
               <span class="chip" style="margin-left:6px;font-size:10px">{plugins.value.length}</span>
             )}
@@ -165,12 +166,12 @@ export function PluginBuilder() {
           )}
 
           {pluginsLoad.value ? (
-            <div class="empty-state"><span class="material-symbols-rounded">sync</span><p>Loading…</p></div>
+            <div class="empty-state"><span class="material-symbols-rounded">sync</span><p>加载中…</p></div>
           ) : plugins.value.length === 0 ? (
             <div class="empty-state" style="padding:48px">
               <span class="material-symbols-rounded" style="font-size:40px">extension</span>
-              <p>No plugins installed</p>
-              <p style="font-size:12px">Switch to Build Plugin tab to create your first plugin.</p>
+              <p>暂无已安装的插件</p>
+              <p style="font-size:12px">切换到构建插件选项卡以创建插件。</p>
             </div>
           ) : (
             <div style="display:flex;flex-direction:column;gap:8px">
@@ -184,7 +185,7 @@ export function PluginBuilder() {
                       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                         <span style="font-size:13px;font-weight:600">{p.name}</span>
                         <span class="chip" style={`font-size:10px;background:${p.enabled ? 'var(--c-low-bg)' : 'var(--surface-3)'};color:${p.enabled ? 'var(--c-low)' : 'var(--text-muted)'}`}>
-                          {p.enabled ? 'Active' : 'Disabled'}
+                          {p.enabled ? '已启用' : '已停用'}
                         </span>
                         {p.version && <span style="font-size:11px;color:var(--text-muted)">v{p.version}</span>}
                       </div>
@@ -198,7 +199,7 @@ export function PluginBuilder() {
                       )}
                     </div>
                     <div style="display:flex;gap:6px;flex-shrink:0">
-                      <button class="btn btn-ghost" style="height:28px;padding:0 8px" title="View code"
+                      <button class="btn btn-ghost" style="height:28px;padding:0 8px" title="查看代码"
                         onClick={() => showCode(p.name)}>
                         <span class="material-symbols-rounded" style="font-size:16px">code</span>
                       </button>
@@ -206,7 +207,7 @@ export function PluginBuilder() {
                         style="height:28px;font-size:12px;padding:0 12px"
                         disabled={toggling.value === p.name}
                         onClick={() => togglePlugin(p.name, p.enabled)}>
-                        {toggling.value === p.name ? '…' : p.enabled ? 'Disable' : 'Enable'}
+                        {toggling.value === p.name ? '…' : p.enabled ? '停用' : '启用'}
                       </button>
                       <button class="btn btn-ghost btn-danger" style="height:28px;padding:0 8px"
                         disabled={deleting.value === p.name}
@@ -221,7 +222,7 @@ export function PluginBuilder() {
                         {(['code', 'spec'] as const).map((tab) => (
                           <button key={tab} onClick={() => { activeTab.value = tab as any; }}
                             style={`padding:6px 14px;background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);color:${activeTab.value === tab ? 'var(--accent)' : 'var(--text-muted)'};border-bottom:2px solid ${activeTab.value === tab ? 'var(--accent)' : 'transparent'};margin-bottom:-1px`}>
-                            {tab === 'code' ? 'Code' : 'Spec'}
+                            {tab === 'code' ? '代码' : '规格'}
                           </button>
                         ))}
                       </div>
@@ -239,9 +240,9 @@ export function PluginBuilder() {
 
       {/* ══════════ BUILD TAB ══════════ */}
       {pageTab.value === 'build' && (<div>
-      <div class="section-header">AI Plugin Builder</div>
+      <div class="section-header">AI 插件构建器</div>
       <p style="color:var(--text-muted);margin-bottom:20px;font-size:13px;line-height:1.6">
-        Describe what the plugin should do — AI writes the code, tests it in a sandbox, and prepares it for activation.
+        描述插件需要完成的任务，AI 会编写代码、在沙盒中测试并准备启用。
       </p>
 
       {/* Gallery */}
@@ -265,7 +266,7 @@ export function PluginBuilder() {
           class="edit-area"
           value={description.value}
           onInput={(e) => { description.value = (e.target as HTMLTextAreaElement).value; }}
-          placeholder="Example: When an email from hr@company.com arrives with 'vacation' in the subject, create a Google Calendar event..."
+          placeholder="例如：当收到 hr@company.com 发来的、主题包含「休假」的邮件时，创建 Google 日历事件…"
           rows={4}
           style="width:100%;resize:vertical"
         />
@@ -277,7 +278,7 @@ export function PluginBuilder() {
         disabled={building.value || !description.value.trim()}
         style="min-width:160px"
       >
-        {building.value ? '🔄 Building...' : '✨ Build with AI'}
+        {building.value ? '🔄 构建中…' : '✨ 使用 AI 构建'}
       </button>
 
       {error.value && (
@@ -294,7 +295,7 @@ export function PluginBuilder() {
           <div style="display:flex;align-items:center;gap:12px;margin:16px 0">
             <span style="font-size:15px;font-weight:600">{result.value.name}</span>
             <span class={`chip ${result.value.ready ? '' : ''}`} style={`background:${result.value.ready ? 'var(--c-low-bg)' : 'var(--c-critical-bg)'};color:${result.value.ready ? 'var(--c-low)' : 'var(--c-critical)'}`}>
-              {result.value.ready ? 'Ready' : 'Failed'}
+              {result.value.ready ? '就绪' : '失败'}
             </span>
           </div>
           <p style="color:var(--text-muted);margin-bottom:16px;font-size:13px">{result.value.description}</p>
@@ -302,10 +303,10 @@ export function PluginBuilder() {
           {/* Permissions summary */}
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">
             {result.value.permissions.network.map((d) => (
-              <span key={d} class="chip">Network: {d}</span>
+              <span key={d} class="chip">网络：{d}</span>
             ))}
             {result.value.permissions.env.map((e) => (
-              <span key={e} class="chip">Env: {e}</span>
+              <span key={e} class="chip">环境变量：{e}</span>
             ))}
           </div>
 
@@ -323,7 +324,7 @@ export function PluginBuilder() {
                   color:${activeTab.value === tab ? 'var(--accent)' : 'var(--text-muted)'};
                 `}
               >
-                {tab === 'spec' ? 'Spec' : tab === 'code' ? 'Code' : 'Sandbox'}
+                {tab === 'spec' ? '规格' : tab === 'code' ? '代码' : '沙盒'}
               </button>
             ))}
           </div>
@@ -339,7 +340,7 @@ export function PluginBuilder() {
             {activeTab.value === 'sandbox' && (
               <div>
                 <p style="margin-bottom:12px;font-size:13px">
-                  {result.value.sandboxResult.success ? 'Pass' : 'Fail'} — {result.value.sandboxResult.durationMs}ms
+                  {result.value.sandboxResult.success ? '通过' : '失败'} — {result.value.sandboxResult.durationMs}ms
                   {result.value.sandboxResult.error && <span style="color:var(--c-critical)"> — {result.value.sandboxResult.error}</span>}
                 </p>
                 <pre style="font-size:12px;white-space:pre-wrap;margin:0;font-family:var(--mono)">{result.value.analysisReport}</pre>
@@ -353,10 +354,10 @@ export function PluginBuilder() {
           {result.value.ready && !enabled.value && (
             <div style="display:flex;gap:8px;margin-top:16px">
               <button class="btn btn-primary" onClick={enable} disabled={enabling.value}>
-                {enabling.value ? 'Enabling…' : 'Enable Plugin'}
+                {enabling.value ? '启用中…' : '启用插件'}
               </button>
               <button class="btn btn-outline" onClick={() => { result.value = null; description.value = ''; }}>
-                Build Another
+                继续构建
               </button>
             </div>
           )}

@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -15,12 +16,12 @@ export function Analytics() {
     error.value   = '';
     api.accounts.stats(selectedAccount.value)
       .then((data) => { stats.value = data; })
-      .catch((e) => { error.value = e.message ?? 'Failed to load analytics'; })
+      .catch((e) => { error.value = e.message ?? '加载统计数据失败'; })
       .finally(() => { loading.value = false; });
   }, [selectedAccount.value]);
 
   if (loading.value) {
-    return <div class="empty-state"><span class="material-symbols-rounded" style="animation:spin 1s linear infinite">sync</span><p>Loading…</p></div>;
+    return <div class="empty-state"><span class="material-symbols-rounded" style="animation:spin 1s linear infinite">sync</span><p>加载中…</p></div>;
   }
 
   if (error.value) {
@@ -32,7 +33,7 @@ export function Analytics() {
     return (
       <div class="empty-state">
         <span class="material-symbols-rounded">bar_chart</span>
-        <p>No analytics data yet</p>
+        <p>暂无统计数据</p>
       </div>
     );
   }
@@ -44,35 +45,35 @@ export function Analytics() {
 
   return (
     <div>
-      <div class="section-header">Last 30 Days</div>
+      <div class="section-header">最近 30 天</div>
 
       <div class="kpi-grid">
         <div class="kpi-tile">
           <div class="kpi-value">{totalEmails}</div>
-          <div class="kpi-label">Total Emails</div>
+          <div class="kpi-label">邮件总量</div>
         </div>
         <div class="kpi-tile">
           <div class="kpi-value">{autoPct}%</div>
-          <div class="kpi-label">Auto-Sent</div>
+          <div class="kpi-label">自动发送</div>
         </div>
         <div class="kpi-tile">
           <div class="kpi-value">{Math.round((s.acceptedRatio ?? 0) * 100)}%</div>
-          <div class="kpi-label">Acceptance Rate</div>
+          <div class="kpi-label">采纳率</div>
         </div>
         <div class="kpi-tile">
           <div class="kpi-value">{Math.round(s.avgResponseMs ?? 0)}ms</div>
-          <div class="kpi-label">Avg Response</div>
+          <div class="kpi-label">平均响应</div>
         </div>
       </div>
 
-      <div class="section-header">Daily Volume</div>
+      <div class="section-header">每日邮件量</div>
       <div style="background:var(--surface-2);border-radius:var(--r-md);padding:16px;margin-bottom:24px">
         <Sparkline data={sparkData} width={600} height={80} />
       </div>
 
       {s.topSenders.length > 0 && (
         <>
-          <div class="section-header">Top Senders</div>
+          <div class="section-header">主要发件人</div>
           {s.topSenders.map((sender) => (
             <div key={sender.sender} style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
               <span>{sender.sender}</span>

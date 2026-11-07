@@ -1,5 +1,8 @@
 # Catchwire Agent
 
+<!-- Modified to link the Simplified Chinese localization with OpenAI GPT. -->
+[Simplified Chinese edition / 简体中文版](README.zh-CN.md)
+
 > A self-hosted AI email assistant that reads, classifies, and replies to your inbox — so you don't have to.
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)

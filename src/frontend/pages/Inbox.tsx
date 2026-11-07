@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal, computed } from '@preact/signals';
@@ -57,7 +58,7 @@ function EmailRow({ email, selected, onClick }: {
         {(email.priority === 'critical' || email.priority === 'high') && !isDone && (
           <span class={`email-row-badge ${email.priority}`}>{email.priority}</span>
         )}
-        {isDone && <span class="email-row-badge done">done</span>}
+        {isDone && <span class="email-row-badge done">已处理</span>}
       </div>
     </div>
   );
@@ -78,11 +79,11 @@ function ReplyCard({ reply, onSend, onEdit, isSending }: {
       <div class="reply-card-actions">
         <button class="btn btn-primary" onClick={onSend} disabled={isSending}>
           <span class="material-symbols-rounded">send</span>
-          {isSending ? 'Sending…' : 'Send'}
+          {isSending ? '发送中…' : '发送'}
         </button>
         <button class="btn btn-outline" onClick={onEdit}>
           <span class="material-symbols-rounded">edit</span>
-          Edit
+          编辑
         </button>
       </div>
     </div>
@@ -117,7 +118,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
       <div class="detail-pane">
         <div class="detail-empty">
           <span class="material-symbols-rounded">mark_email_read</span>
-          <p>Select an email to review</p>
+          <p>请选择一封邮件查看</p>
         </div>
       </div>
     );
@@ -188,7 +189,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
           <div class="detail-header-info">
             <div class="detail-from">{email.sender_name || email.from_address}</div>
             {email.sender_name && <div class="detail-from-email">{email.from_address}</div>}
-            <div class="detail-time">{new Date(email.created_at).toLocaleString()}</div>
+            <div class="detail-time">{new Date(email.created_at).toLocaleString('zh-CN')}</div>
           </div>
           <span class={`pill ${email.priority}`}>{email.priority}</span>
         </div>
@@ -201,12 +202,12 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
           <div class="ai-card">
             <div class="ai-card-header">
               <span class="ai-chip">AI</span>
-              <span style="font-size:12px;font-weight:600;color:var(--text-secondary)">Analysis</span>
+              <span style="font-size:12px;font-weight:600;color:var(--text-secondary)">分析</span>
             </div>
             {email.summary && <div class="ai-summary">{email.summary}</div>}
             <div class="ai-meta">
               {analysis?.intent && (
-                <div class="ai-meta-item">Intent <strong>{analysis.intent}</strong></div>
+                <div class="ai-meta-item">意图 <strong>{analysis.intent}</strong></div>
               )}
               {analysis?.confidence != null && (
                 <div class="ai-meta-item">
@@ -215,7 +216,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
               )}
               {isDone && (
                 <div class="ai-meta-item">
-                  Status <strong style="color:var(--c-low)">{email.user_action}</strong>
+                  状态 <strong style="color:var(--c-low)">{email.user_action}</strong>
                 </div>
               )}
             </div>
@@ -226,7 +227,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         <div class="email-body-section">
           <div class="email-body-label" style="cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none"
             onClick={() => { showBody.value = !showBody.value; }}>
-            Original Email
+            原始邮件
             <span class="material-symbols-rounded" style="font-size:14px">
               {showBody.value ? 'expand_less' : 'expand_more'}
             </span>
@@ -236,7 +237,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
           )}
           {!showBody.value && (
             <div class="email-body-text" style="opacity:.6;font-style:italic">
-              Click to expand original email…
+              点击展开原始邮件…
             </div>
           )}
         </div>
@@ -249,7 +250,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         )}
         {resultMsg.value === 'ignored' && (
           <div style="padding:12px 16px;background:var(--surface-3);color:var(--text-muted);border-radius:var(--r-md);margin-bottom:16px;font-size:13px">
-            Email marked as ignored
+            已忽略此邮件
           </div>
         )}
         {resultMsg.value.startsWith('error:') && (
@@ -261,7 +262,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         {/* Suggested Replies */}
         {!isDone && replies.length > 0 && editIdx.value === null && (
           <div class="replies-section">
-            <div class="replies-label">Suggested Replies</div>
+            <div class="replies-label">建议回复</div>
             {replies.map((r, i) => (
               <ReplyCard
                 key={i}
@@ -277,12 +278,12 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         {/* Edit mode */}
         {editIdx.value !== null && (
           <div style="margin-bottom:20px">
-            <div class="replies-label">Edit Reply</div>
+            <div class="replies-label">编辑回复</div>
 
             {/* AI rewrite instruction */}
             <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;margin-bottom:10px">
               <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.4px;margin-bottom:6px">
-                AI REWRITE
+                AI 改写
               </div>
               <div style="display:flex;gap:8px">
                 <input
@@ -291,7 +292,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
                   value={aiInstruct.value}
                   onInput={(e) => { aiInstruct.value = (e.target as HTMLInputElement).value; }}
                   onKeyDown={(e) => { if (e.key === 'Enter') regenerate(); }}
-                  placeholder="e.g. make it shorter, add an apology, translate to Spanish…"
+                  placeholder="例如，缩短内容、调整语气或翻译成中文…"
                 />
                 <button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px"
                   onClick={regenerate}
@@ -299,7 +300,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
                   <span class="material-symbols-rounded" style="font-size:14px">
                     {regenerating.value ? 'sync' : 'auto_awesome'}
                   </span>
-                  {regenerating.value ? 'Rewriting…' : 'Rewrite'}
+                  {regenerating.value ? '改写中…' : '改写'}
                 </button>
               </div>
             </div>
@@ -312,9 +313,9 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
             <div style="display:flex;gap:8px">
               <button class="btn btn-primary" onClick={() => sendReply(editBody.value)} disabled={sending.value || !editBody.value.trim()}>
                 <span class="material-symbols-rounded">send</span>
-                {sending.value ? 'Sending…' : 'Send Reply'}
+                {sending.value ? '发送中…' : '发送回复'}
               </button>
-              <button class="btn btn-outline" onClick={() => { editIdx.value = null; }}>Cancel</button>
+              <button class="btn btn-outline" onClick={() => { editIdx.value = null; }}>取消</button>
             </div>
           </div>
         )}
@@ -322,7 +323,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         {/* No replies empty state */}
         {!isDone && replies.length === 0 && (
           <div style="padding:16px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:16px;font-size:13px;color:var(--text-muted)">
-            No suggested replies generated yet.
+            暂无建议回复。
           </div>
         )}
       </div>
@@ -333,7 +334,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
           {replies.length > 0 && editIdx.value === null && (
             <button class="btn btn-primary" onClick={() => sendReply(replies[0].body)} disabled={sending.value}>
               <span class="material-symbols-rounded">send</span>
-              {sending.value ? 'Sending…' : `Send: ${replies[0].label}`}
+              {sending.value ? '发送中…' : `发送：${replies[0].label}`}
             </button>
           )}
           {editIdx.value === null && (
@@ -348,7 +349,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
           <div style="flex:1" />
           <button class="btn btn-ghost btn-danger" onClick={ignore}>
             <span class="material-symbols-rounded">block</span>
-            Ignore
+            忽略
           </button>
         </div>
       )}
@@ -366,12 +367,13 @@ function FullBody({ emailId }: { emailId: string }) {
       .catch(() => { body.value = '(could not load)'; })
       .finally(() => { loading.value = false; });
   }, [emailId]);
-  if (loading.value) return <div class="email-body-text" style="opacity:.5">Loading…</div>;
+  if (loading.value) return <div class="email-body-text" style="opacity:.5">加载中…</div>;
   return <div class="email-body-text">{body.value}</div>;
 }
 
 // ── Inbox ──────────────────────────────────────────────────────────────────
 
+const FILTER_LABELS: Record<Filter, string> = { all: '全部', pending: '待处理', critical: '紧急', high: '高', done: '已处理' };
 const FILTERS: Filter[] = ['all', 'pending', 'critical', 'high', 'done'];
 
 export function Inbox() {
@@ -435,7 +437,7 @@ export function Inbox() {
       <div class="email-list-pane">
         <div class="email-list-header">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div class="email-list-title">Emails</div>
+            <div class="email-list-title">邮件</div>
             <button class="btn btn-ghost" style="height:28px;padding:0 8px;font-size:12px"
               onClick={() => loadEmails(1)} disabled={loading.value}>
               <span class="material-symbols-rounded" style="font-size:14px">refresh</span>
@@ -448,7 +450,7 @@ export function Inbox() {
                 class={`filter-chip${filter.value === f ? ' active' : ''}`}
                 onClick={() => { filter.value = f; selectedId.value = null; /* effect auto-selects first */ }}
               >
-                {f}
+                {FILTER_LABELS[f]}
                 {counts[f] > 0 && <span class="count">({counts[f]})</span>}
               </button>
             ))}
@@ -459,7 +461,7 @@ export function Inbox() {
           {loading.value && emails.value.length === 0 ? (
             <div class="empty-state" style="padding:32px 16px">
               <span class="material-symbols-rounded" style="font-size:28px">sync</span>
-              <p>Loading…</p>
+              <p>加载中…</p>
             </div>
           ) : filtered.length === 0 ? (
             <div class="empty-state" style="padding:32px 16px">
@@ -468,8 +470,8 @@ export function Inbox() {
               </span>
               <p>
                 {filter.value === 'pending'
-                  ? 'All caught up!'
-                  : 'No emails here'}
+                  ? '所有邮件均已处理！'
+                  : '这里暂无邮件'}
               </p>
             </div>
           ) : (
@@ -486,7 +488,7 @@ export function Inbox() {
                 <div style="padding:12px;text-align:center">
                   <button class="btn btn-ghost" style="font-size:12px"
                     onClick={() => loadEmails(page.value + 1)} disabled={loading.value}>
-                    {loading.value ? 'Loading…' : 'Load more'}
+                    {loading.value ? '加载中…' : '加载更多'}
                   </button>
                 </div>
               )}

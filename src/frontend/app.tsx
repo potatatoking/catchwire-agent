@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -24,106 +25,106 @@ import { api, getToken, setToken, clearToken } from './api/client.ts';
 import './styles/global.css';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/agent/inbox':            'Inbox',
+  '/agent/inbox':            '收件箱',
   '/agent/threads':          'Threads',
   '/agent/analytics':        'Analytics',
-  '/agent/email-templates':  'Email Templates',
-  '/agent/templates':        'AI Prompts',
-  '/agent/scheduled':        'Scheduled',
+  '/agent/email-templates':  '邮件模板',
+  '/agent/templates':        'AI 提示词',
+  '/agent/scheduled':        '待发送',
   '/agent/webhooks':         'Webhooks',
-  '/agent/plugins':          'Plugin Builder',
-  '/agent/overrides':        'Sender Overrides',
-  '/agent/playground':       'Prompt Playground',
+  '/agent/plugins':          '插件构建器',
+  '/agent/overrides':        '发件人规则',
+  '/agent/playground':       '提示词调试台',
   '/agent/settings':         'Settings',
 };
 
 const PAGE_INFO: Record<string, PageInfoContent> = {
   '/agent/threads': {
-    description: 'View email conversations grouped by thread. Each thread shows all messages between you and a contact.',
+    description: '按会话查看你与联系人的往来邮件。',
     actions: [
-      'Browse all email threads sorted by latest activity',
-      'Expand a thread to read individual messages',
-      'See AI-generated summaries for each message',
+      '按最近活动查看邮件会话',
+      '展开会话阅读各封邮件',
+      '查看 AI 生成的邮件摘要',
     ],
   },
   '/agent/analytics': {
-    description: 'Monitor how the AI agent is performing — email volume, auto-reply rate, and top senders.',
+    description: '查看邮件量、自动回复率和主要发件人。',
     actions: [
-      'Track accepted vs. rejected AI reply ratio',
-      'View daily email volume for the last 30 days',
-      'See which senders email you most frequently',
+      '查看 AI 回复的采纳和拒绝比例',
+      '查看最近 30 天的每日邮件量',
+      '查看邮件往来最频繁的发件人',
     ],
   },
   '/agent/email-templates': {
     description: 'Manage reusable email body templates with dynamic variables like {{name}} or {{date}}.',
     actions: [
-      'Create templates with {{variable}} placeholders',
-      'Test-render a template by filling in variables',
-      'Edit or delete existing templates',
-      'Pick a tone for each template (professional, friendly…)',
+      'Create templates with {{variable}} 占位符',
+      '填写变量以预览模板效果',
+      '编辑或删除已有模板',
+      '为每个模板选择语气（如专业或友好）',
     ],
   },
   '/agent/templates': {
-    description: 'Configure AI system prompts that control how the agent writes replies — globally or per email intent.',
+    description: '为所有邮件或指定邮件意图设置系统提示词。',
     actions: [
-      'Create a global prompt applied to all emails',
+      '创建适用于所有邮件的全局提示词',
       'Create intent-specific prompts (e.g. for "support" emails only)',
-      'Activate or deactivate individual prompt profiles',
-      'Edit the prompt text at any time',
+      '启用或停用单个提示词',
+      '随时编辑提示词',
     ],
   },
   '/agent/scheduled': {
-    description: 'See emails queued to be sent at a future time and manage the scheduled queue.',
+    description: '查看并管理定时发送队列。',
     actions: [
-      'View all pending scheduled emails with their send time',
-      'Cancel a scheduled email before it is sent',
-      'Filter by status: scheduled, sent, failed, or cancelled',
+      '查看待发送邮件及其发送时间',
+      '在发送前取消定时邮件',
+      '按待发送、已发送、失败或已取消筛选',
     ],
   },
   '/agent/webhooks': {
-    description: 'Register HTTP endpoints to receive real-time notifications when the agent processes emails.',
+    description: '注册 HTTP 地址以接收邮件处理通知。',
     actions: [
-      'Add a webhook URL for any event (email.received, reply.sent…)',
-      'Enable or disable individual webhooks without deleting them',
-      'Each delivery is signed with HMAC-SHA256 for verification',
-      'Delete webhooks you no longer need',
+      '为邮件接收、回复发送等事件添加 Webhook',
+      '直接启用或停用单个 Webhook',
+      '每次推送都带有可供验证的 HMAC-SHA256 签名',
+      '删除不再使用的 Webhook',
     ],
   },
   '/agent/plugins': {
-    description: 'Build custom automation plugins using AI — describe what you want and the agent writes, tests, and installs the code.',
+    description: '描述你需要的自动化流程，AI 会编写、测试并安装插件。',
     actions: [
-      'Describe a plugin in plain text and let AI build it',
-      'Review generated code and sandbox test results before enabling',
-      'Enable or disable installed plugins at any time',
-      'View the generated code and spec for any plugin',
+      '用自然语言描述插件需求',
+      '启用前查看生成的代码和沙盒测试结果',
+      '随时启用或停用插件',
+      '查看插件代码和规格',
     ],
   },
   '/agent/overrides': {
-    description: 'Define custom behaviour for specific senders or domains — override tone, autonomy level, and routing.',
+    description: '为指定发件人或域名设置回复语气、处理方式和转发规则。',
     actions: [
-      'Match by exact email address or entire domain (*@company.com)',
-      'Set autonomy level: auto-send, draft, or consult-only',
-      'Override the reply tone per sender',
-      'Forward emails from a sender to another address',
-      'Restrict a rule to specific hours of the day',
+      '按完整邮箱地址或域名匹配（如 *@company.com）',
+      '选择自动发送、草稿或仅建议',
+      '为发件人单独设置回复语气',
+      '将指定发件人的邮件转发到其他地址',
+      '限制规则每日生效的时段',
     ],
   },
   '/agent/playground': {
-    description: 'Test a system prompt against a sample email before applying it to your account — no real emails involved.',
+    description: '用示例邮件测试系统提示词，再应用到你的账号。',
     actions: [
-      'Write or paste a system prompt',
-      'Paste a sample email body to test against',
-      'See the AI reply and token usage',
+      '撰写或粘贴系统提示词',
+      '粘贴示例邮件正文',
+      '查看 AI 回复和词元用量',
     ],
   },
   '/agent/settings': {
-    description: 'Configure your email accounts, LLM provider, reply behaviour, and personal preferences.',
+    description: '配置邮箱、模型服务商、回复方式和个人偏好。',
     actions: [
-      'Connect Gmail, IMAP, or forwarding email accounts',
-      'Authorize Gmail via OAuth (click the OAuth button on a Gmail account)',
-      'Choose LLM provider and model (OpenAI, Claude, Gemini, Ollama…)',
-      'Set reply tone and autonomy level',
-      'Enable emoji, change language, or toggle shadow mode',
+      '连接 Gmail、IMAP 或转发邮箱',
+      '通过邮箱旁的 OAuth 按钮授权 Gmail',
+      '选择模型服务商和模型（如 OpenAI、Claude、Gemini 或 Ollama）',
+      '设置回复语气和自动处理方式',
+      '设置表情符号、回复语言和观察模式',
     ],
   },
 };
@@ -190,7 +191,7 @@ export function App() {
     return (
       <div style="height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:var(--surface-1)">
         <span class="material-symbols-rounded" style="font-size:40px;color:var(--accent);animation:spin 1s linear infinite">sync</span>
-        <div style="font-size:14px;color:var(--text-muted)">Signing you in…</div>
+        <div style="font-size:14px;color:var(--text-muted)">正在登录…</div>
       </div>
     );
   }
@@ -222,9 +223,9 @@ export function App() {
       {isDemo.value && (
         <div class="demo-banner">
           <span class="material-symbols-rounded" style="font-size:16px">lock</span>
-          <span>Demo mode — changes are disabled.</span>
+          <span>演示模式下无法保存改动。</span>
           <a href="https://github.com/orilaxnet/catchwire-agent" target="_blank" rel="noopener">
-            Fork to self-host →
+            Fork 后自行部署 →
           </a>
         </div>
       )}
@@ -232,7 +233,7 @@ export function App() {
         <NavRail currentPath={path.value} />
         <div class="main-content">
           <TopAppBar
-            title={isInbox ? 'Inbox' : (PAGE_TITLES[path.value] ?? 'Email Agent')}
+            title={isInbox ? '收件箱' : (PAGE_TITLES[path.value] ?? '邮件助手')}
             info={PAGE_INFO[path.value]}
             onChatToggle={() => { chatOpen.value = !chatOpen.value; }}
             chatOpen={chatOpen.value}

@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useSignal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
@@ -25,7 +26,7 @@ export function PageInfo({ info }: { info: PageInfoContent }) {
     <div ref={ref} style="position:relative;display:inline-flex">
       <button
         class="icon-btn"
-        title="Page info"
+        title="页面说明"
         onClick={() => { open.value = !open.value; }}
         style={open.value ? 'color:var(--accent);background:var(--accent-subtle)' : ''}
       >
@@ -41,13 +42,13 @@ export function PageInfo({ info }: { info: PageInfoContent }) {
           padding:16px;z-index:200;
         `}>
           <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;margin-bottom:8px">
-            ABOUT THIS PAGE
+            关于此页面
           </div>
           <p style="font-size:13px;color:var(--text-primary);line-height:1.6;margin-bottom:12px">
             {info.description}
           </p>
           <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;margin-bottom:8px">
-            WHAT YOU CAN DO
+            可用操作
           </div>
           <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
             {info.actions.map((a, i) => (

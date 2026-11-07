@@ -1,3 +1,4 @@
+// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useSignal } from '@preact/signals';
 import { PriorityBadge } from './PriorityBadge.tsx';
@@ -109,7 +110,7 @@ export function EmailCard({ email, onAction }: { email: EmailItem; onAction?: ()
           {replies.length > 0 && (
             <div style="margin-top:12px">
               <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;letter-spacing:.05em">
-                AI SUGGESTED REPLIES
+                AI 建议回复
               </div>
               {replies.map((r, i) => (
                 <div key={i} style="background:var(--surface-2);border-radius:var(--r-md);padding:12px;margin-bottom:8px">
@@ -121,7 +122,7 @@ export function EmailCard({ email, onAction }: { email: EmailItem; onAction?: ()
                     onClick={(e) => sendReply(e, r.body)}
                     disabled={sending.value}
                   >
-                    {sending.value ? 'Sending…' : `Send: ${r.label}`}
+                    {sending.value ? '发送中…' : `发送：${r.label}`}
                   </button>
                 </div>
               ))}
@@ -136,13 +137,13 @@ export function EmailCard({ email, onAction }: { email: EmailItem; onAction?: ()
                 style="width:100%;resize:vertical"
                 value={editBody.value}
                 onInput={(e) => { editBody.value = (e.target as HTMLTextAreaElement).value; }}
-                placeholder="Write your reply…"
+                placeholder="撰写回复…"
               />
               <div style="display:flex;gap:8px;margin-top:8px">
                 <button class="btn btn-primary" onClick={sendEdit} disabled={sending.value}>
-                  {sending.value ? 'Sending…' : 'Send Reply'}
+                  {sending.value ? '发送中…' : '发送回复'}
                 </button>
-                <button class="btn btn-outline" onClick={() => { showEdit.value = false; }}>Cancel</button>
+                <button class="btn btn-outline" onClick={() => { showEdit.value = false; }}>取消</button>
               </div>
             </div>
           ) : (
@@ -154,7 +155,7 @@ export function EmailCard({ email, onAction }: { email: EmailItem; onAction?: ()
                 <span class="material-symbols-rounded" style="font-size:16px">edit</span>
                 Edit & Send
               </button>
-              <button class="btn btn-ghost" onClick={ignore}>Ignore</button>
+              <button class="btn btn-ghost" onClick={ignore}>忽略</button>
             </div>
           )}
         </div>
