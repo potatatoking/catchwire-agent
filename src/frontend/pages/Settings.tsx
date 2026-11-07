@@ -3,7 +3,10 @@ import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { selectedAccount, accounts } from '../signals/store.ts';
-import { api, type Account } from '../api/client.ts';
+import { SmtpFields } from '../components/SmtpFields.tsx';
+import { api, type Account, type SmtpConfig } from '../api/client.ts';
+
+const emptySmtp = (): SmtpConfig => ({ host: '', port: 587, user: '', password: '' });
 
 const LLM_PROVIDERS = [
   { id: 'grok',       label: 'Grok (xAI)',  placeholder: 'xai-...' },
@@ -72,6 +75,48 @@ export function Settings() {
       renameError.value = error instanceof Error ? error.message : '无法保存显示名称';
     } finally {
       savingName.value = false;
+    }
+  }
+
+  const newSmtp = useSignal<SmtpConfig | null>(null);
+  const smtpAccount = useSignal<Account | null>(null);
+  const smtpConfig = useSignal<SmtpConfig>(emptySmtp());
+  const smtpHasPassword = useSignal(false);
+  const smtpBusy = useSignal(false);
+  const smtpMessage = useSignal('');
+
+  async function openSmtp(account: Account) {
+    smtpAccount.value = account;
+    smtpConfig.value = emptySmtp();
+    smtpHasPassword.value = false;
+    smtpMessage.value = '';
+    smtpBusy.value = true;
+    try {
+      const { hasPassword, ...config } = await api.accounts.smtp(account.account_id);
+      smtpConfig.value = { ...config, user: config.user || account.email_address };
+      smtpHasPassword.value = hasPassword;
+    } catch (error) {
+      smtpMessage.value = error instanceof Error ? error.message : '无法读取 SMTP 设置';
+    } finally {
+      smtpBusy.value = false;
+    }
+  }
+
+  async function saveSmtp(event: Event) {
+    event.preventDefault();
+    const account = smtpAccount.value;
+    if (!account || smtpBusy.value) return;
+    smtpBusy.value = true;
+    smtpMessage.value = '';
+    try {
+      await api.accounts.saveSmtp(account.account_id, smtpConfig.value);
+      smtpHasPassword.value = true;
+      smtpConfig.value = { ...smtpConfig.value, password: '' };
+      smtpMessage.value = '发件设置已保存';
+    } catch (error) {
+      smtpMessage.value = error instanceof Error ? error.message : '无法保存 SMTP 设置';
+    } finally {
+      smtpBusy.value = false;
     }
   }
 
@@ -169,10 +214,12 @@ export function Settings() {
         email_address: newEmail.value.trim(),
         display_name:  newDisplay.value.trim() || undefined,
         account_type:  newType.value, credentials: creds,
+        smtp: newType.value === 'imap' ? newSmtp.value ?? undefined : undefined,
       });
       const updated = await api.accounts.list();
       accounts.value = updated;
       showAddAcc.value = false;
+      newSmtp.value = null;
       newEmail.value = newDisplay.value = imapHost.value = imapUser.value = imapPass.value = '';
       testResult.value = null;
     } catch (e: any) { addAccErr.value = e.message; }
@@ -219,6 +266,10 @@ export function Settings() {
                     displayName.value = a.display_name === a.email_address ? '' : a.display_name ?? '';
                     renameError.value = '';
                   }}>改名</button>
+                {a.provider === 'imap' && (
+                  <button type="button" class="btn btn-outline" disabled={smtpBusy.value}
+                    onClick={(event) => { event.stopPropagation(); void openSmtp(a); }}>发件设置</button>
+                )}
                 {a.provider === 'gmail' && (
                   <button type="button" onClick={async (event) => {
                     event.stopPropagation();
@@ -262,6 +313,20 @@ export function Settings() {
                 </button>
                 <button type="button" class="btn btn-ghost" disabled={savingName.value}
                   onClick={() => { renameAccount.value = null; }}>取消</button>
+              </div>
+            </form>
+          )}
+
+          {smtpAccount.value && (
+            <form class="card" style="margin-bottom:16px" onSubmit={saveSmtp}>
+              <div class="field-label">{smtpAccount.value.email_address}</div>
+              <SmtpFields config={smtpConfig.value} hasPassword={smtpHasPassword.value}
+                disabled={smtpBusy.value} onChange={(value) => { smtpConfig.value = value; }} />
+              {smtpMessage.value && <p role="status">{smtpMessage.value}</p>}
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button type="submit" class="btn btn-primary" disabled={smtpBusy.value}>保存</button>
+                <button type="button" class="btn btn-ghost" disabled={smtpBusy.value}
+                  onClick={() => { smtpAccount.value = null; smtpConfig.value = emptySmtp(); }}>关闭</button>
               </div>
             </form>
           )}
@@ -316,6 +381,14 @@ export function Settings() {
                         onInput={(e: any) => { imapPass.value = e.target.value; testResult.value = null; }}
                         placeholder="Gmail 请填写应用专用密码" />
                     </div>
+                    <label>
+                      <input type="checkbox" checked={newSmtp.value !== null}
+                        onChange={(event) => {
+                          newSmtp.value = event.currentTarget.checked ? { ...emptySmtp(), user: newEmail.value.trim() } : null;
+                        }} />
+                      同时配置 SMTP 发件（可选）
+                    </label>
+                    {newSmtp.value && <SmtpFields config={newSmtp.value} onChange={(value) => { newSmtp.value = value; }} />}
                     {/* Test connection */}
                     <div>
                       <button class="btn btn-ghost" style="font-size:13px"
@@ -342,7 +415,7 @@ export function Settings() {
                   <button class="btn btn-primary" onClick={addAccount} disabled={addingAcc.value}>
                     {addingAcc.value ? '连接中…' : '连接账号'}
                   </button>
-                  <button class="btn btn-ghost" onClick={() => { showAddAcc.value = false; testResult.value = null; }}>取消</button>
+                  <button class="btn btn-ghost" onClick={() => { showAddAcc.value = false; newSmtp.value = null; testResult.value = null; }}>取消</button>
                 </div>
               </div>
             </div>

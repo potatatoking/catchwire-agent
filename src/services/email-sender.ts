@@ -1,3 +1,4 @@
+import { resolveSmtpHost } from './smtp-settings.ts';
 import { createTransport } from 'nodemailer';
 import { logger } from '../utils/logger.ts';
 import { getPool } from '../storage/pg-pool.ts';
@@ -96,10 +97,13 @@ export class EmailSender {
         return { success: false, error: 'SMTP credentials not configured' };
       }
 
+      const host = creds.smtp_public_only ? await resolveSmtpHost(creds.smtp_host) : creds.smtp_host;
+      const port = creds.smtp_port ?? 587;
       const transporter = createTransport({
-        host:   creds.smtp_host,
-        port:   creds.smtp_port ?? 587,
-        secure: creds.smtp_port === 465,
+        host,
+        port,
+        secure: port === 465,
+        ...(creds.smtp_public_only ? { requireTLS: port !== 465, tls: { servername: creds.smtp_host } } : {}),
         auth: {
           user: creds.smtp_user,
           pass: creds.smtp_pass,

@@ -99,6 +99,13 @@ export interface Thread {
   first_message_at?: string;
 }
 
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  user: string;
+  password?: string;
+}
+
 export interface Account {
   account_id:    string;
   email_address: string;
@@ -207,6 +214,10 @@ export const api = {
   },
 
   accounts: {
+    smtp: (id: string) => req<Omit<SmtpConfig, 'password'> & { hasPassword: boolean }>(`/accounts/${encodeURIComponent(id)}/smtp`),
+    saveSmtp: (id: string, smtp: SmtpConfig) => req<{ ok: boolean }>(`/accounts/${encodeURIComponent(id)}/smtp`, {
+      method: 'PATCH', body: JSON.stringify(smtp),
+    }),
     rename: (id: string, displayName: string) => req<Account>(`/accounts/${encodeURIComponent(id)}`, {
       method: 'PATCH', body: JSON.stringify({ display_name: displayName }),
     }),
@@ -220,6 +231,7 @@ export const api = {
       display_name?: string;
       account_type?: string;
       credentials?: object;
+      smtp?: SmtpConfig;
     }) => req<{ account_id: string; email_address: string; account_type: string }>('/accounts', {
       method: 'POST', body: JSON.stringify(data),
     }),
