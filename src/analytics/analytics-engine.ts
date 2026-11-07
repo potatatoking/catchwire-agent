@@ -20,6 +20,10 @@ export interface AccountStats {
 
 export class AnalyticsEngine {
   async getAccountStats(accountId: string): Promise<AccountStats> {
+    return this.getAccountsStats([accountId], accountId);
+  }
+
+  async getAccountsStats(accountIds: string[], accountId = 'all'): Promise<AccountStats> {
     const pool = getPool();
 
     const { rows: daily } = await pool.query(`
@@ -35,32 +39,32 @@ export class AnalyticsEngine {
         SUM(CASE WHEN f.prediction->>'priority'='medium'   THEN 1 ELSE 0 END)::int AS p_medium,
         SUM(CASE WHEN f.prediction->>'priority'='low'      THEN 1 ELSE 0 END)::int AS p_low
       FROM feedback f
-      WHERE f.account_id = $1 AND f.created_at > NOW() - INTERVAL '30 days'
+      WHERE f.account_id = ANY($1::text[]) AND f.created_at > NOW() - INTERVAL '30 days'
       GROUP BY f.created_at::date
       ORDER BY date ASC
-    `, [accountId]);
+    `, [accountIds]);
 
     const { rows: topSenders } = await pool.query(`
       SELECT from_address AS sender, COUNT(*)::int AS cnt
       FROM email_log
-      WHERE account_id = $1 AND processed_at > NOW() - INTERVAL '30 days'
+      WHERE account_id = ANY($1::text[]) AND processed_at > NOW() - INTERVAL '30 days'
       GROUP BY from_address
-      ORDER BY cnt DESC
+      ORDER BY cnt DESC, sender ASC
       LIMIT 10
-    `, [accountId]);
+    `, [accountIds]);
 
     const { rows: ratioRows } = await pool.query(`
       SELECT AVG(CASE WHEN was_correct THEN 1.0 ELSE 0.0 END) AS ratio
       FROM feedback
-      WHERE account_id = $1 AND created_at > NOW() - INTERVAL '30 days'
-    `, [accountId]);
+      WHERE account_id = ANY($1::text[]) AND created_at > NOW() - INTERVAL '30 days'
+    `, [accountIds]);
 
     const { rows: avgRows } = await pool.query(`
       SELECT AVG(processing_ms) AS avg_ms
       FROM email_log
-      WHERE account_id = $1 AND processing_ms IS NOT NULL
+      WHERE account_id = ANY($1::text[]) AND processing_ms IS NOT NULL
         AND processed_at > NOW() - INTERVAL '30 days'
-    `, [accountId]);
+    `, [accountIds]);
 
     return {
       accountId,

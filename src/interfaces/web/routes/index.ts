@@ -82,6 +82,14 @@ router.get('/accounts', async (req, res) => {
 router.get('/accounts/:id/stats', async (req, res) => {
   try {
     const userId = (req as any).user?.sub;
+    if (req.params.id === 'all') {
+      const { rows } = await getPool().query(
+        'SELECT id FROM email_accounts WHERE user_id = $1 AND enabled = TRUE',
+        [userId],
+      );
+      res.json(await analytics.getAccountsStats(rows.map((account) => account.id)));
+      return;
+    }
     if (!await assertOwnsAccount(req.params.id, userId)) { res.status(403).json({ error: 'Forbidden' }); return; }
     res.json(await analytics.getAccountStats(req.params.id));
   } catch {
@@ -92,15 +100,19 @@ router.get('/accounts/:id/stats', async (req, res) => {
 router.get('/accounts/:id/emails', async (req, res) => {
   try {
     const userId = (req as any).user?.sub;
-    if (!await assertOwnsAccount(req.params.id, userId)) { res.status(403).json({ error: 'Forbidden' }); return; }
-    const page = Math.max(1, Math.min(1000, parseInt((req.query.page as string) ?? '1', 10)));
+    const all = req.params.id === 'all';
+    if (!all && !await assertOwnsAccount(req.params.id, userId)) { res.status(403).json({ error: 'Forbidden' }); return; }
+    const requestedPage = Number.parseInt(String(req.query.page ?? '1'), 10) || 1;
+    const page = Math.max(1, Math.min(1000, requestedPage));
     const { rows } = await getPool().query(
       `SELECT id, account_id, thread_id, from_address, sender_name, subject,
               summary, priority, intent, agent_response, user_action,
               processed_at AS created_at
-       FROM email_log WHERE account_id = $1
-       ORDER BY processed_at DESC LIMIT 20 OFFSET $2`,
-      [req.params.id, (page - 1) * 20]
+       FROM email_log
+       WHERE ${all ? 'account_id IN (SELECT id FROM email_accounts WHERE user_id = $1 AND enabled = TRUE)' : 'account_id = $1'}
+       ORDER BY ${all ? "CASE priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END," : ''}
+                processed_at DESC, id DESC LIMIT 20 OFFSET $2`,
+      [all ? userId : req.params.id, (page - 1) * 20]
     );
     res.json(rows);
   } catch {

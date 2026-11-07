@@ -1,8 +1,9 @@
 // Modified for Simplified Chinese localization with OpenAI GPT.
+import { MailboxScope } from '../components/MailboxScope.tsx';
 import { h } from 'preact';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { useSignal, computed } from '@preact/signals';
-import { emails, selectedAccount, loading } from '../signals/store.ts';
+import { accounts, combinedMailbox, emails, selectedAccount, loading } from '../signals/store.ts';
 import { api } from '../api/client.ts';
 import type { EmailItem } from '../api/client.ts';
 
@@ -40,8 +41,8 @@ type Filter = 'all' | 'pending' | 'critical' | 'high' | 'done';
 
 // ── Email List Row ─────────────────────────────────────────────────────────
 
-function EmailRow({ email, selected, onClick }: {
-  email: EmailItem; selected: boolean; onClick: () => void;
+function EmailRow({ email, selected, source, onClick }: {
+  email: EmailItem; selected: boolean; source?: string; onClick: () => void;
 }) {
   const analysis = email.agent_response as any;
   const isDone   = Boolean(email.user_action);
@@ -51,6 +52,7 @@ function EmailRow({ email, selected, onClick }: {
       <div class="email-row-body">
         <div class="email-row-sender">{email.sender_name || email.from_address}</div>
         <div class="email-row-subject">{email.subject}</div>
+        {source && <div class="email-row-preview">来源：{source}</div>}
         {email.summary && <div class="email-row-preview">{email.summary}</div>}
       </div>
       <div class="email-row-meta">
@@ -92,7 +94,7 @@ function ReplyCard({ reply, onSend, onEdit, isSending }: {
 
 // ── Detail Panel ───────────────────────────────────────────────────────────
 
-function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone: () => void; onBack?: () => void }) {
+function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | null; readOnly: boolean; onDone: () => void; onBack?: () => void }) {
   const editIdx     = useSignal<number | null>(null);
   const editBody    = useSignal('');
   const sending     = useSignal(false);
@@ -260,7 +262,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         )}
 
         {/* Suggested Replies */}
-        {!isDone && replies.length > 0 && editIdx.value === null && (
+        {!readOnly && !isDone && replies.length > 0 && editIdx.value === null && (
           <div class="replies-section">
             <div class="replies-label">建议回复</div>
             {replies.map((r, i) => (
@@ -276,7 +278,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         )}
 
         {/* Edit mode */}
-        {editIdx.value !== null && (
+        {!readOnly && editIdx.value !== null && (
           <div style="margin-bottom:20px">
             <div class="replies-label">编辑回复</div>
 
@@ -321,7 +323,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         )}
 
         {/* No replies empty state */}
-        {!isDone && replies.length === 0 && (
+        {!readOnly && !isDone && replies.length === 0 && (
           <div style="padding:16px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:16px;font-size:13px;color:var(--text-muted)">
             暂无建议回复。
           </div>
@@ -329,7 +331,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
       </div>
 
       {/* Bottom action bar */}
-      {!isDone && (
+      {!readOnly && !isDone && (
         <div class="action-bar">
           {replies.length > 0 && editIdx.value === null && (
             <button class="btn btn-primary" onClick={() => sendReply(replies[0].body)} disabled={sending.value}>
@@ -383,22 +385,36 @@ export function Inbox() {
   const filter      = useSignal<Filter>('pending');
   const showDetail  = useSignal(false); // mobile: whether detail pane is visible
 
+  const scope = combinedMailbox.value ? 'all' : selectedAccount.value;
+  const requestId = useRef(0);
+  const error = useSignal('');
+
   const loadEmails = (p: number) => {
-    if (!selectedAccount.value) return;
+    if (!scope) return;
+    const request = ++requestId.current;
     loading.value = true;
-    api.emails.list(selectedAccount.value, p).then((data) => {
+    error.value = '';
+    api.emails.list(scope, p).then((data) => {
+      if (request !== requestId.current) return;
       emails.value = p === 1 ? data : [...emails.value, ...data];
-      hasMore.value = data.length === 20;
-      page.value    = p;
-    }).catch(console.error).finally(() => { loading.value = false; });
+      hasMore.value = data.length === 20 && p < 1000;
+      page.value = p;
+    }).catch((err) => {
+      if (request === requestId.current) error.value = err.message;
+    }).finally(() => {
+      if (request === requestId.current) loading.value = false;
+    });
   };
 
   useEffect(() => {
     page.value = 1;
+    hasMore.value = false;
     emails.value = [];
     selectedId.value = null;
+    showDetail.value = false;
     loadEmails(1);
-  }, [selectedAccount.value]);
+    return () => { ++requestId.current; loading.value = false; };
+  }, [scope]);
 
   const filtered = emails.value
     .filter((e) => {
@@ -443,6 +459,7 @@ export function Inbox() {
               <span class="material-symbols-rounded" style="font-size:14px">refresh</span>
             </button>
           </div>
+          <MailboxScope />
           <div class="filter-row">
             {FILTERS.map((f) => (
               <button
@@ -458,6 +475,7 @@ export function Inbox() {
         </div>
 
         <div class="email-list-scroll">
+          {error.value && <p role="alert">{error.value}</p>}
           {loading.value && emails.value.length === 0 ? (
             <div class="empty-state" style="padding:32px 16px">
               <span class="material-symbols-rounded" style="font-size:28px">sync</span>
@@ -480,10 +498,13 @@ export function Inbox() {
                 <EmailRow
                   key={e.id}
                   email={e}
+                  source={combinedMailbox.value ? accounts.value.find(a => a.account_id === e.account_id)?.email_address : undefined}
                   selected={selectedId.value === e.id}
                   onClick={() => { selectedId.value = e.id; showDetail.value = true; }}
                 />
               ))}
+            </>
+          )}
               {hasMore.value && (
                 <div style="padding:12px;text-align:center">
                   <button class="btn btn-ghost" style="font-size:12px"
@@ -492,8 +513,6 @@ export function Inbox() {
                   </button>
                 </div>
               )}
-            </>
-          )}
         </div>
       </div>
 
@@ -501,6 +520,7 @@ export function Inbox() {
       <div class={`detail-pane-wrapper${showDetail.value ? ' visible' : ''}`}>
         <DetailPane
           email={selectedEmail}
+          readOnly={combinedMailbox.value}
           onBack={() => { showDetail.value = false; }}
           onDone={() => {
             showDetail.value = false;

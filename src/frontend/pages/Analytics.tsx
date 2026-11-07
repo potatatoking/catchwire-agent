@@ -3,37 +3,37 @@ import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { Sparkline } from '../components/Sparkline.tsx';
-import { stats, selectedAccount } from '../signals/store.ts';
-import { api } from '../api/client.ts';
+import { combinedMailbox, selectedAccount } from '../signals/store.ts';
+import { MailboxScope } from '../components/MailboxScope.tsx';
+import { api, type Stats } from '../api/client.ts';
 
 export function Analytics() {
+  const stats = useSignal<Stats | null>(null);
+  const scope = combinedMailbox.value ? 'all' : selectedAccount.value;
   const loading = useSignal(false);
   const error   = useSignal('');
 
   useEffect(() => {
-    if (!selectedAccount.value) return;
+    stats.value = null;
+    error.value = '';
+    if (!scope) return;
+    let active = true;
     loading.value = true;
-    error.value   = '';
-    api.accounts.stats(selectedAccount.value)
-      .then((data) => { stats.value = data; })
-      .catch((e) => { error.value = e.message ?? '加载统计数据失败'; })
-      .finally(() => { loading.value = false; });
-  }, [selectedAccount.value]);
-
-  if (loading.value) {
-    return <div class="empty-state"><span class="material-symbols-rounded" style="animation:spin 1s linear infinite">sync</span><p>加载中…</p></div>;
-  }
-
-  if (error.value) {
-    return <div class="empty-state"><span class="material-symbols-rounded">error</span><p>{error.value}</p></div>;
-  }
+    api.accounts.stats(scope)
+      .then((data) => { if (active) stats.value = data; })
+      .catch((e) => { if (active) error.value = e.message ?? '加载统计数据失败'; })
+      .finally(() => { if (active) loading.value = false; });
+    return () => { active = false; };
+  }, [scope]);
 
   const s = stats.value;
-  if (!s) {
+  if (!s || loading.value || error.value) {
     return (
-      <div class="empty-state">
-        <span class="material-symbols-rounded">bar_chart</span>
-        <p>暂无统计数据</p>
+      <div>
+        <MailboxScope />
+        <div class="empty-state">
+          <p>{error.value || (loading.value ? '加载中…' : '暂无统计数据')}</p>
+        </div>
       </div>
     );
   }
@@ -45,6 +45,7 @@ export function Analytics() {
 
   return (
     <div>
+      <MailboxScope />
       <div class="section-header">最近 30 天</div>
 
       <div class="kpi-grid">
