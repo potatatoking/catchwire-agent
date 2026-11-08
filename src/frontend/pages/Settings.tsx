@@ -1,6 +1,6 @@
 // Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { selectedAccount, accounts } from '../signals/store.ts';
 import { SmtpFields } from '../components/SmtpFields.tsx';
@@ -86,6 +86,7 @@ export function Settings() {
   const smtpMessage = useSignal('');
 
   async function openSmtp(account: Account) {
+    showAddAcc.value = false;
     renameAccount.value = null;
     smtpAccount.value = account;
     smtpConfig.value = emptySmtp();
@@ -123,6 +124,7 @@ export function Settings() {
 
   const showAddAcc  = useSignal(false);
   const newEmail    = useSignal('');
+  const newEmailInput = useRef<HTMLInputElement>(null);
   const newDisplay  = useSignal('');
   const newType     = useSignal('imap');
   const imapHost    = useSignal('imap.gmail.com');
@@ -141,6 +143,22 @@ export function Settings() {
       apiBaseUrl.value      = info.apiBaseUrl || window.location.origin;
     }).catch(() => { apiBaseUrl.value = window.location.origin; });
   }, []);
+
+  useEffect(() => {
+    if (showAddAcc.value) newEmailInput.current?.focus();
+  }, [showAddAcc.value]);
+
+  function openAddAccount() {
+    renameAccount.value = null;
+    smtpAccount.value = null;
+    smtpConfig.value = emptySmtp();
+    addAccErr.value = '';
+    if (showAddAcc.value) {
+      newEmailInput.current?.focus();
+    } else {
+      showAddAcc.value = true;
+    }
+  }
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -258,6 +276,7 @@ export function Settings() {
                 <button type="button" class="btn btn-outline" disabled={savingName.value}
                   onClick={(event) => {
                     event.stopPropagation();
+                    showAddAcc.value = false;
                     smtpAccount.value = null;
                     smtpConfig.value = emptySmtp();
                     renameAccount.value = a;
@@ -290,8 +309,9 @@ export function Settings() {
                 )}
               </div>
             ))}
-            <button class="btn btn-outline" style="align-self:flex-start;margin-top:4px"
-              onClick={() => { showAddAcc.value = !showAddAcc.value; }}>
+            <button type="button" class="btn btn-outline" style="align-self:flex-start;margin-top:4px"
+              aria-expanded={showAddAcc.value} aria-controls="add-mailbox-panel"
+              disabled={smtpBusy.value || savingName.value || addingAcc.value} onClick={openAddAccount}>
               <span class="material-symbols-rounded">add</span>
               添加邮箱
             </button>
@@ -330,12 +350,12 @@ export function Settings() {
           )}
 
           {showAddAcc.value && (
-            <div class="card mailbox-panel">
+            <div class="card mailbox-panel" id="add-mailbox-panel">
               <div class="mailbox-account-title">连接邮箱账号</div>
               <div style="display:flex;flex-direction:column;gap:10px">
                 <div>
                   <div class="field-label">邮箱地址 *</div>
-                  <input class="md-input" value={newEmail.value}
+                  <input ref={newEmailInput} class="md-input" value={newEmail.value}
                     onInput={(e: any) => { newEmail.value = e.target.value; }}
                     placeholder="you@example.com" />
                 </div>
