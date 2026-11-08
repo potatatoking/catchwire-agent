@@ -1,3 +1,4 @@
+import { SenderPicker } from '../components/SenderPicker.tsx';
 // Modified for Simplified Chinese localization with OpenAI GPT.
 import { MailboxScope } from '../components/MailboxScope.tsx';
 import { h } from 'preact';
@@ -281,14 +282,9 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
 
         {/* Suggested Replies */}
         {!readOnly && !isDone && mailAccount && aliases.value.length > 0 && (
-          <label class="mailbox-panel mailbox-from">
-            <span>发件人</span>
-            <select class="md-input" value={fromAddress.value}
-              onChange={(event) => { fromAddress.value = event.currentTarget.value; }}>
-              <option value="">{mailAccount.email_address}</option>
-              {aliases.value.map((address) => <option key={address} value={address}>{address}</option>)}
-            </select>
-          </label>
+          <SenderPicker key={email.id} primary={mailAccount.email_address} aliases={aliases.value}
+            selected={fromAddress.value} disabled={sending.value}
+            onSelect={(address) => { fromAddress.value = address; }} />
         )}
 
         {!readOnly && !isDone && replies.length > 0 && editIdx.value === null && (
