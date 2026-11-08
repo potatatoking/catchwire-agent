@@ -48,12 +48,11 @@ async function main() {
     logger.info('Telegram interface started');
   }
 
-  const web = new WebInterface(parseInt(process.env.PORT ?? '3000', 10));
+  const multiAccount = new MultiAccountManager(encryption);
+  const web = new WebInterface(parseInt(process.env.PORT ?? '3000', 10), (id, interval) => multiAccount.startIMAPPoller(id, interval));
   ifaceManager.registerInterface(web as any);
-  await web.start();
 
   // ── Email routing ─────────────────────────────────────────────────────────
-  const multiAccount = new MultiAccountManager(encryption);
   const controller   = new ActionController({
     llmRouter:        llm,
     interfaceManager: ifaceManager,
@@ -67,6 +66,7 @@ async function main() {
   });
 
   await multiAccount.initialize();
+  await web.start();
   logger.info('Multi-account manager initialized');
 
   // ── SMTP Ingestion ────────────────────────────────────────────────────────

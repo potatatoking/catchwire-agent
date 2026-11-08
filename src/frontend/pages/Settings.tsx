@@ -3,9 +3,11 @@ import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { selectedAccount, accounts } from '../signals/store.ts';
+import { ImapFields } from '../components/ImapFields.tsx';
 import { SmtpFields } from '../components/SmtpFields.tsx';
-import { api, type Account, type SmtpConfig } from '../api/client.ts';
+import { api, type Account, type ImapConfig, type SmtpConfig } from '../api/client.ts';
 
+const emptyImap = (): ImapConfig => ({ host: '', port: 993, user: '', password: '' });
 const emptySmtp = (): SmtpConfig => ({ host: '', port: 587, user: '', password: '' });
 
 const LLM_PROVIDERS = [
@@ -80,6 +82,9 @@ export function Settings() {
 
   const newSmtp = useSignal<SmtpConfig | null>(null);
   const smtpAccount = useSignal<Account | null>(null);
+  const editImap = useSignal<ImapConfig | null>(null);
+  const imapHasPassword = useSignal(false);
+  const editSmtpEnabled = useSignal(false);
   const smtpConfig = useSignal<SmtpConfig>(emptySmtp());
   const smtpHasPassword = useSignal(false);
   const smtpBusy = useSignal(false);
@@ -89,13 +94,18 @@ export function Settings() {
     showAddAcc.value = false;
     renameAccount.value = null;
     smtpAccount.value = account;
+    editImap.value = null;
     smtpConfig.value = emptySmtp();
     smtpHasPassword.value = false;
     smtpMessage.value = '';
     smtpBusy.value = true;
     try {
-      const { hasPassword, ...config } = await api.accounts.smtp(account.account_id);
-      smtpConfig.value = { ...config, user: config.user || account.email_address };
+      const { hasPassword, imap, ...config } = await api.accounts.smtp(account.account_id);
+      const { hasPassword: incomingHasPassword, ...incoming } = imap;
+      editImap.value = incoming;
+      imapHasPassword.value = incomingHasPassword;
+      smtpConfig.value = config;
+      editSmtpEnabled.value = Boolean(config.host);
       smtpHasPassword.value = hasPassword;
     } catch (error) {
       smtpMessage.value = error instanceof Error ? error.message : '无法读取 SMTP 设置';
@@ -107,14 +117,16 @@ export function Settings() {
   async function saveSmtp(event: Event) {
     event.preventDefault();
     const account = smtpAccount.value;
-    if (!account || smtpBusy.value) return;
+    if (!account || !editImap.value || smtpBusy.value) return;
     smtpBusy.value = true;
     smtpMessage.value = '';
     try {
-      await api.accounts.saveSmtp(account.account_id, smtpConfig.value);
-      smtpHasPassword.value = true;
+      await api.accounts.saveMailbox(account.account_id, editImap.value, editSmtpEnabled.value ? smtpConfig.value : undefined);
+      imapHasPassword.value = true;
+      editImap.value = { ...editImap.value, password: '' };
+      if (editSmtpEnabled.value) smtpHasPassword.value = true;
       smtpConfig.value = { ...smtpConfig.value, password: '' };
-      smtpMessage.value = '发件设置已保存';
+      smtpMessage.value = '邮箱设置已保存';
     } catch (error) {
       smtpMessage.value = error instanceof Error ? error.message : '无法保存 SMTP 设置';
     } finally {
@@ -127,10 +139,7 @@ export function Settings() {
   const newEmailInput = useRef<HTMLInputElement>(null);
   const newDisplay  = useSignal('');
   const newType     = useSignal('imap');
-  const imapHost    = useSignal('imap.gmail.com');
-  const imapPort    = useSignal('993');
-  const imapUser    = useSignal('');
-  const imapPass    = useSignal('');
+  const newImap = useSignal<ImapConfig>(emptyImap());
   const addingAcc   = useSignal(false);
   const addAccErr   = useSignal('');
   const testingConn = useSignal(false);
@@ -206,10 +215,10 @@ export function Settings() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('ea_token')}` },
         body: JSON.stringify({
-          host: imapHost.value || 'imap.gmail.com',
-          port: parseInt(imapPort.value) || 993,
-          user: imapUser.value || newEmail.value,
-          pass: imapPass.value,
+          host: newImap.value.host.trim(),
+          port: newImap.value.port,
+          user: newImap.value.user || newEmail.value.trim(),
+          pass: newImap.value.password,
         }),
       });
       const d = await r.json() as { ok: boolean; error?: string };
@@ -220,14 +229,17 @@ export function Settings() {
   };
 
   const addAccount = async () => {
+    if (newType.value === 'imap' && (!newImap.value.host.trim() || !newImap.value.password)) {
+      addAccErr.value = '请填写 IMAP 服务器和密码'; return;
+    }
     if (!newEmail.value.trim()) { addAccErr.value = '请填写邮箱地址'; return; }
     addingAcc.value = true; addAccErr.value = '';
     try {
       const creds = newType.value === 'imap' ? {
-        imap_host: imapHost.value || 'imap.gmail.com',
-        imap_port: parseInt(imapPort.value) || 993,
-        imap_user: imapUser.value || newEmail.value,
-        imap_pass: imapPass.value,
+        imap_host: newImap.value.host.trim(),
+        imap_port: newImap.value.port,
+        imap_user: newImap.value.user || newEmail.value.trim(),
+        imap_pass: newImap.value.password,
       } : undefined;
       await api.accounts.create({
         email_address: newEmail.value.trim(),
@@ -239,7 +251,8 @@ export function Settings() {
       accounts.value = updated;
       showAddAcc.value = false;
       newSmtp.value = null;
-      newEmail.value = newDisplay.value = imapHost.value = imapUser.value = imapPass.value = '';
+      newEmail.value = newDisplay.value = '';
+      newImap.value = emptyImap();
       testResult.value = null;
     } catch (e: any) { addAccErr.value = e.message; }
     finally { addingAcc.value = false; }
@@ -285,13 +298,13 @@ export function Settings() {
                   }}>改名</button>
                 {a.provider === 'imap' && (
                   <button type="button" class="btn btn-outline" disabled={smtpBusy.value}
-                    onClick={(event) => { event.stopPropagation(); void openSmtp(a); }}>发件设置</button>
+                    onClick={(event) => { event.stopPropagation(); void openSmtp(a); }}>设置</button>
                 )}
-                {a.provider === 'gmail' && (
+                {(a.provider === 'gmail' || a.provider === 'outlook') && (
                   <button type="button" onClick={async (event) => {
                     event.stopPropagation();
                     try {
-                      const { url } = await api.auth.startGmail(a.account_id);
+                      const { url } = await (a.provider === 'outlook' ? api.auth.startOutlook(a.account_id) : api.auth.startGmail(a.account_id));
                       window.location.assign(url);
                     } catch (error) {
                       window.alert(error instanceof Error ? error.message : 'Gmail 授权失败');
@@ -299,9 +312,9 @@ export function Settings() {
                   }}
                     class="btn btn-outline"
                     style="height:26px;font-size:11px;padding:0 10px;text-decoration:none"
-                    title="授权连接 Gmail">
+                    title={a.provider === 'outlook' ? '使用 Microsoft 登录' : '授权连接 Gmail'}>
                     <span class="material-symbols-rounded" style="font-size:13px">link</span>
-                    OAuth
+                    {a.provider === 'outlook' ? 'Microsoft OAuth' : 'OAuth'}
                   </button>
                 )}
                 {a.account_id === selectedAccount.value && (
@@ -338,11 +351,21 @@ export function Settings() {
           {smtpAccount.value && (
             <form class="card mailbox-panel" onSubmit={saveSmtp}>
               <div class="field-label">{smtpAccount.value.email_address}</div>
-              <SmtpFields config={smtpConfig.value} hasPassword={smtpHasPassword.value}
-                disabled={smtpBusy.value} onChange={(value) => { smtpConfig.value = value; }} />
+              {editImap.value && (
+                <>
+                  <ImapFields config={editImap.value} hasPassword={imapHasPassword.value}
+                    disabled={smtpBusy.value} onChange={(value) => { editImap.value = value; }} />
+                  {!smtpConfig.value.host && !editSmtpEnabled.value && (
+                    <button type="button" class="btn btn-outline" disabled={smtpBusy.value}
+                      onClick={() => { editSmtpEnabled.value = true; }}>添加 SMTP 发件设置</button>
+                  )}
+                  {editSmtpEnabled.value && <SmtpFields config={smtpConfig.value} hasPassword={smtpHasPassword.value}
+                    disabled={smtpBusy.value} onChange={(value) => { smtpConfig.value = value; }} />}
+                </>
+              )}
               {smtpMessage.value && <p role="status">{smtpMessage.value}</p>}
               <div style="display:flex;gap:8px;margin-top:8px">
-                <button type="submit" class="btn btn-primary" disabled={smtpBusy.value}>保存</button>
+                <button type="submit" class="btn btn-primary" disabled={smtpBusy.value || !editImap.value}>保存</button>
                 <button type="button" class="btn btn-ghost" disabled={smtpBusy.value}
                   onClick={() => { smtpAccount.value = null; smtpConfig.value = emptySmtp(); }}>关闭</button>
               </div>
@@ -374,35 +397,11 @@ export function Settings() {
                 </div>
                 {newType.value === 'imap' && (
                   <>
-                    <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
-                      <div>
-                        <div class="field-label">IMAP 服务器</div>
-                        <input class="md-input" value={imapHost.value}
-                          onInput={(e: any) => { imapHost.value = e.target.value; }}
-                          placeholder="imap.gmail.com" />
-                      </div>
-                      <div style="width:80px">
-                        <div class="field-label">端口</div>
-                        <input class="md-input" value={imapPort.value} type="number"
-                          onInput={(e: any) => { imapPort.value = e.target.value; }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div class="field-label">用户名</div>
-                      <input class="md-input" value={imapUser.value}
-                        onInput={(e: any) => { imapUser.value = e.target.value; }}
-                        placeholder="留空则使用邮箱地址" />
-                    </div>
-                    <div>
-                      <div class="field-label">密码或应用专用密码</div>
-                      <input class="md-input" type="password" value={imapPass.value}
-                        onInput={(e: any) => { imapPass.value = e.target.value; testResult.value = null; }}
-                        placeholder="Gmail 请填写应用专用密码" />
-                    </div>
+                    <ImapFields config={newImap.value} onChange={(value) => { newImap.value = value; testResult.value = null; }} />
                     <label>
                       <input type="checkbox" checked={newSmtp.value !== null}
                         onChange={(event) => {
-                          newSmtp.value = event.currentTarget.checked ? { ...emptySmtp(), user: newEmail.value.trim() } : null;
+                          newSmtp.value = event.currentTarget.checked ? emptySmtp() : null;
                         }} />
                       同时配置 SMTP 发件（可选）
                     </label>
@@ -410,7 +409,7 @@ export function Settings() {
                     {/* Test connection */}
                     <div>
                       <button class="btn btn-ghost" style="font-size:13px"
-                        onClick={testConnection} disabled={testingConn.value || !imapPass.value}>
+                        onClick={testConnection} disabled={testingConn.value || !newImap.value.password}>
                         <span class="material-symbols-rounded" style="font-size:16px;vertical-align:middle">wifi_tethering</span>
                         {testingConn.value ? ' 测试中…' : ' 测试连接'}
                       </button>

@@ -5,7 +5,7 @@ import { z } from 'zod';
 export const smtpSettingsSchema = z.object({
   host: z.string().trim().max(253).regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/i),
   port: z.number().int().min(1).max(65535),
-  user: z.string().trim().min(1).max(320),
+  user: z.string().trim().max(320).optional(),
   password: z.string().max(1024).optional(),
   aliases: z.array(z.string().trim().max(254).email()).max(20).optional(),
 });
@@ -20,13 +20,13 @@ export interface SmtpCredentials {
   smtp_aliases?: string[];
 }
 
-export function smtpCredentials(settings: SmtpSettings, existing?: SmtpCredentials) {
+export function smtpCredentials(settings: SmtpSettings, existing: SmtpCredentials | undefined, imapUser?: string, imapPassword?: string) {
   return {
     smtp_public_only: true,
     smtp_host: settings.host,
     smtp_port: settings.port,
-    smtp_user: settings.user,
-    smtp_pass: settings.password || existing?.smtp_pass,
+    smtp_user: settings.user || imapUser || existing?.smtp_user,
+    smtp_pass: settings.password || imapPassword || existing?.smtp_pass,
     smtp_aliases: settings.aliases === undefined ? existing?.smtp_aliases ?? []
       : [...new Map(settings.aliases.map((address) => [address.toLowerCase(), address])).values()],
   };

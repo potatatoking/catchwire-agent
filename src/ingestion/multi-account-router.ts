@@ -1,3 +1,5 @@
+import { IMAPPoller, type IMAPConfig } from './imap-poller.ts';
+import { outlookImapHost, outlookXoauth2, refreshOutlookToken, type OutlookCredentials } from './outlook-oauth.ts';
 import { randomUUID }  from 'crypto';
 import { EventEmitter } from 'events';
 import { logger }       from '../utils/logger.ts';
@@ -9,6 +11,7 @@ import type { RawEmail, ParsedEmail } from '../types/index.ts';
 type ParsedEmailHandler = (email: ParsedEmail) => Promise<void>;
 
 export class MultiAccountManager extends EventEmitter {
+  private readonly imapPollers = new Map<string, IMAPPoller>();
   private parser: ForwardingParser;
   private handlers: ParsedEmailHandler[] = [];
 
@@ -24,8 +27,8 @@ export class MultiAccountManager extends EventEmitter {
     logger.info(`Multi-account manager: ${rows.length} account(s) active`);
 
     for (const acc of rows) {
-      if (acc.account_type === 'imap' && acc.credentials_enc) {
-        await this.startIMAPPoller(acc);
+      if ((acc.account_type === 'imap' || acc.account_type === 'outlook') && acc.credentials_enc) {
+        this.startIMAPPoller(acc.id, acc.polling_interval_min);
       } else if (acc.account_type === 'mailtm' && acc.credentials_enc) {
         await this.startMailTMPoller(acc);
       } else if (acc.account_type === 'gmail') {
@@ -34,28 +37,39 @@ export class MultiAccountManager extends EventEmitter {
     }
   }
 
-  private async startIMAPPoller(account: any): Promise<void> {
-    try {
-      const creds = account.credentials_enc
-        ? JSON.parse(this.encryption.decrypt(account.credentials_enc))
-        : null;
-      if (!creds?.imap_host) {
-        logger.warn('IMAP account missing credentials', { accountId: account.id }); return;
+  startIMAPPoller(accountId: string, intervalMin = 5): void {
+    if (this.imapPollers.has(accountId)) return;
+    const poller = new IMAPPoller(accountId, () => this.loadImapConfig(accountId), (raw) => this.ingest(raw), intervalMin);
+    this.imapPollers.set(accountId, poller);
+    poller.start();
+  }
+
+  private async loadImapConfig(accountId: string): Promise<IMAPConfig | null> {
+    const pool = getPool();
+    const { rows: [account] } = await pool.query(
+      'SELECT account_type, email_address, credentials_enc FROM email_accounts WHERE id = $1 AND enabled = TRUE',
+      [accountId],
+    );
+    if (!account?.credentials_enc) return null;
+    const creds = JSON.parse(this.encryption.decrypt(account.credentials_enc));
+    if (account.account_type === 'outlook') {
+      let tokens: OutlookCredentials = creds;
+      if (tokens.expiresAt < Date.now() + 60_000) {
+        tokens = await refreshOutlookToken(tokens.refreshToken);
+        const { rowCount } = await pool.query(
+          "UPDATE email_accounts SET credentials_enc = $1 WHERE id = $2 AND credentials_enc = $3 AND enabled = TRUE",
+          [this.encryption.encrypt(JSON.stringify(tokens)), accountId, account.credentials_enc],
+        );
+        if (!rowCount) return null;
       }
-      const { IMAPPoller } = await import('./imap-poller.ts');
-      const poller = new IMAPPoller(
-        account.id,
-        { host: creds.imap_host, port: creds.imap_port ?? 993,
-          user: creds.imap_user ?? account.email_address,
-          password: creds.imap_pass, tls: creds.imap_port !== 143 },
-        (raw) => this.ingest(raw),
-        account.polling_interval_min ?? 5,
-      );
-      poller.start();
-      logger.info('IMAP poller started', { accountId: account.id });
-    } catch (err) {
-      logger.error('Failed to start IMAP poller', { accountId: account.id, err });
+      return { host: outlookImapHost, port: 993, user: account.email_address, tls: true,
+        xoauth2: outlookXoauth2(account.email_address, tokens.accessToken) };
     }
+    const host = creds.host ?? creds.imap_host;
+    const password = creds.pass ?? creds.imap_pass;
+    if (!host || !password) return null;
+    const port = creds.port ?? creds.imap_port ?? 993;
+    return { host, port, user: creds.user ?? creds.imap_user ?? account.email_address, password, tls: port !== 143 };
   }
 
   private async startMailTMPoller(account: any): Promise<void> {

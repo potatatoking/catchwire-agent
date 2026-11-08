@@ -56,7 +56,7 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
   const type      = useSignal<EmailType>('gmail');
   const email     = useSignal('');
   const display   = useSignal('');
-  const imapHost  = useSignal('imap.gmail.com');
+  const imapHost  = useSignal('');
   const imapPort  = useSignal('993');
   const imapUser  = useSignal('');
   const imapPass  = useSignal('');
@@ -152,7 +152,7 @@ function StepEmail({ onNext }: { onNext: (accountId: string) => void }) {
               <div class="field-label">IMAP 服务器</div>
               <input class="md-input" style="margin-top:5px" value={imapHost.value}
                 onInput={(e: any) => { imapHost.value = e.target.value; }}
-                placeholder="imap.gmail.com" />
+                placeholder="imap.example.com" />
             </div>
             <div>
               <div class="field-label">端口</div>

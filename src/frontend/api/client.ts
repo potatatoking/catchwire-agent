@@ -99,6 +99,13 @@ export interface Thread {
   first_message_at?: string;
 }
 
+export interface ImapConfig {
+  host: string;
+  port: number;
+  user: string;
+  password?: string;
+}
+
 export interface SmtpConfig {
   host: string;
   port: number;
@@ -199,6 +206,9 @@ export interface Persona {
 
 export const api = {
   auth: {
+    startOutlook: (accountId: string) => req<{ url: string }>('/auth/outlook/start', {
+      method: 'POST', body: JSON.stringify({ accountId }),
+    }, ''),
     startGmail: (accountId: string) => req<{ url: string }>('/auth/gmail/start', {
       method: 'POST', body: JSON.stringify({ accountId }),
     }, ''),
@@ -215,9 +225,9 @@ export const api = {
   },
 
   accounts: {
-    smtp: (id: string) => req<Omit<SmtpConfig, 'password'> & { hasPassword: boolean }>(`/accounts/${encodeURIComponent(id)}/smtp`),
-    saveSmtp: (id: string, smtp: SmtpConfig) => req<{ ok: boolean }>(`/accounts/${encodeURIComponent(id)}/smtp`, {
-      method: 'PATCH', body: JSON.stringify(smtp),
+    smtp: (id: string) => req<Omit<SmtpConfig, 'password'> & { hasPassword: boolean; imap: Omit<ImapConfig, 'password'> & { hasPassword: boolean } }>(`/accounts/${encodeURIComponent(id)}/smtp`),
+    saveMailbox: (id: string, imap: ImapConfig, smtp?: SmtpConfig) => req<{ ok: boolean }>(`/accounts/${encodeURIComponent(id)}/smtp`, {
+      method: 'PATCH', body: JSON.stringify({ imap, smtp }),
     }),
     rename: (id: string, displayName: string) => req<Account>(`/accounts/${encodeURIComponent(id)}`, {
       method: 'PATCH', body: JSON.stringify({ display_name: displayName }),

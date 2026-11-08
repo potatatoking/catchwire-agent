@@ -9,11 +9,12 @@ import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger.ts';
 import type { RawEmail } from '../types/index.ts';
 
-interface IMAPConfig {
+export interface IMAPConfig {
   host:     string;
   port:     number;
   user:     string;
-  password: string;
+  password?: string;
+  xoauth2?: string;
   tls:      boolean;
 }
 
@@ -22,10 +23,11 @@ type RawEmailHandler = (email: RawEmail) => Promise<void>;
 export class IMAPPoller {
   private intervalId?: ReturnType<typeof setInterval>;
   private lastUID = 0;
+  private polling = false;
 
   constructor(
     private accountId: string,
-    private config: IMAPConfig,
+    private getConfig: () => Promise<IMAPConfig | null>,
     private onEmail: RawEmailHandler,
     private intervalMin = 5,
   ) {}
@@ -40,15 +42,25 @@ export class IMAPPoller {
     if (this.intervalId) clearInterval(this.intervalId);
   }
 
-  private poll(): void {
+  private async poll(): Promise<void> {
+    if (this.polling) return;
+    this.polling = true;
+    let config: IMAPConfig | null;
+    try {
+      config = await this.getConfig();
+    } catch (error) {
+      logger.warn('IMAP credentials could not be loaded', { accountId: this.accountId, message: error instanceof Error ? error.message : String(error) });
+      this.polling = false;
+      return;
+    }
+    if (!config) { this.polling = false; return; }
     const imap = new Imap({
-      user:     this.config.user,
-      password: this.config.password,
-      host:     this.config.host,
-      port:     this.config.port,
-      tls:      this.config.tls,
+      ...config,
+      autotls: 'required',
+      connTimeout: 10_000, authTimeout: 10_000, socketTimeout: 30_000,
       tlsOptions: { rejectUnauthorized: true },
     });
+    imap.once('close', () => { this.polling = false; });
 
     imap.once('ready', () => {
       imap.openBox('INBOX', false, (err, box) => {
@@ -87,6 +99,10 @@ export class IMAPPoller {
             });
           });
 
+          fetch.once('error', (error: Error) => {
+            logger.warn('IMAP fetch failed', { accountId: this.accountId, message: error.message });
+            imap.end();
+          });
           fetch.once('end', () => {
             this.lastUID = Math.max(...uids);
             imap.end();
@@ -96,7 +112,8 @@ export class IMAPPoller {
     });
 
     imap.once('error', (err: Error) => {
-      logger.error('IMAP connection error', err);
+      this.polling = false;
+      logger.error('IMAP connection error', { accountId: this.accountId, message: err.message });
     });
 
     imap.connect();

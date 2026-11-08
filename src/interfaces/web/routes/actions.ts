@@ -1,5 +1,6 @@
 import { Encryption } from '../../../security/encryption.ts';
-import { smtpCredentials, smtpSettingsSchema, type SmtpCredentials } from '../../../services/smtp-settings.ts';
+import { smtpCredentials, smtpSettingsSchema } from '../../../services/smtp-settings.ts';
+import { z } from 'zod';
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { getPool } from '../../../storage/pg-pool.ts';
@@ -146,7 +147,8 @@ async function testImap(cfg: { host: string; port: number; user: string; pass: s
     const imap = new (Imap as any)({
       user: cfg.user, password: cfg.pass,
       host: cfg.host, port: cfg.port,
-      tls: cfg.port === 993,
+      tls: cfg.port !== 143,
+      autotls: 'required',
       // H03: rejectUnauthorized must be true; disabling it allows MITM credential interception
       tlsOptions: { rejectUnauthorized: true },
       authTimeout: 10_000,
@@ -181,43 +183,84 @@ router.post('/accounts/test-connection', async (req, res) => {
   }
 });
 
+const imapSettingsSchema = z.object({
+  host: z.string().trim().min(1).max(253).regex(/^[a-z0-9.-]+$/i),
+  port: z.number().int().min(1).max(65535),
+  user: z.string().trim().max(320).optional(),
+  password: z.string().max(1024).optional(),
+});
+
 // Read only non-secret SMTP settings for the account owner.
 router.get('/accounts/:id/smtp', async (req, res) => {
   try {
     const { rows } = await getPool().query(
-      "SELECT credentials_enc FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'imap' AND enabled = TRUE",
+      "SELECT email_address, credentials_enc FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'imap' AND enabled = TRUE",
       [req.params.id, (req as any).user.sub],
     );
     if (!rows.length) { res.status(404).json({ error: '找不到 IMAP 邮箱' }); return; }
     const encrypted = rows[0].credentials_enc;
-    const credentials: SmtpCredentials = encrypted ? JSON.parse(new Encryption(process.env.ENCRYPTION_KEY!).decrypt(encrypted)) : {};
-    res.json({ host: credentials.smtp_host ?? '', port: credentials.smtp_port ?? 587, user: credentials.smtp_user ?? '', hasPassword: Boolean(credentials.smtp_pass), aliases: credentials.smtp_aliases ?? [] });
+    const credentials = encrypted ? JSON.parse(new Encryption(process.env.ENCRYPTION_KEY!).decrypt(encrypted)) : {};
+    res.json({ host: credentials.smtp_host ?? '', port: credentials.smtp_port ?? 587, user: credentials.smtp_user ?? '', hasPassword: Boolean(credentials.smtp_pass), aliases: credentials.smtp_aliases ?? [],
+      imap: { host: credentials.host ?? credentials.imap_host ?? '', port: credentials.port ?? credentials.imap_port ?? 993,
+        user: credentials.user ?? credentials.imap_user ?? rows[0].email_address,
+        hasPassword: Boolean(credentials.pass ?? credentials.imap_pass) },
+    });
   } catch {
     res.status(500).json({ error: 'Internal error' });
   }
 });
 
 router.patch('/accounts/:id/smtp', async (req, res) => {
-  const smtp = smtpSettingsSchema.safeParse(req.body);
-  if (!smtp.success) { res.status(400).json({ error: '请检查 SMTP 域名、端口、用户名和别名格式' }); return; }
+  const input = req.body ?? {};
+  const combined = Object.hasOwn(input, 'imap') || Object.hasOwn(input, 'smtp');
+  const imap = combined ? imapSettingsSchema.safeParse(input.imap) : null;
+  const smtp = combined && input.smtp === undefined ? null : smtpSettingsSchema.safeParse(combined ? input.smtp : input);
+  if (imap && (!imap.success || PRIVATE_HOST_RE.test(imap.data.host))) {
+    res.status(400).json({ error: '请填写有效的公网 IMAP 服务器和端口' }); return;
+  }
+  if (smtp && !smtp.success) {
+    res.status(400).json({ error: '请检查 SMTP 域名、端口、用户名和别名格式' }); return;
+  }
   try {
     const pool = getPool();
     const userId = (req as any).user.sub;
     const { rows } = await pool.query(
-      "SELECT credentials_enc FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'imap' AND enabled = TRUE",
+      "SELECT email_address, credentials_enc FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'imap' AND enabled = TRUE",
       [req.params.id, userId],
     );
     if (!rows.length) { res.status(404).json({ error: '找不到 IMAP 邮箱' }); return; }
     const enc = new Encryption(process.env.ENCRYPTION_KEY!);
     const previous = rows[0].credentials_enc;
     const credentials = previous ? JSON.parse(enc.decrypt(previous)) : {};
-    const settings = smtpCredentials(smtp.data, credentials);
-    if (!settings.smtp_pass) { res.status(400).json({ error: '请填写 SMTP 密码' }); return; }
+    const oldImapUser = credentials.user ?? credentials.imap_user ?? rows[0].email_address;
+    const oldImapPassword = credentials.pass ?? credentials.imap_pass;
+    const imapUser = imap?.success ? imap.data.user || rows[0].email_address : oldImapUser;
+    const imapPassword = imap?.success ? imap.data.password || oldImapPassword : oldImapPassword;
+    let updated = credentials;
+    if (imap?.success) {
+      const { host, port } = imap.data;
+      if (!imapPassword) { res.status(400).json({ error: '请填写 IMAP 密码' }); return; }
+      if (host !== (credentials.host ?? credentials.imap_host) || port !== (credentials.port ?? credentials.imap_port) ||
+          imapUser !== oldImapUser || imapPassword !== oldImapPassword) {
+        try {
+          await testImap({ host, port, user: imapUser, pass: imapPassword });
+        } catch (error) {
+          res.status(422).json({ error: imapErrorMessage(error instanceof Error ? error.message : String(error)) }); return;
+        }
+      }
+      updated = { ...updated, host, port, user: imapUser, pass: imapPassword, secure: port === 993 };
+    }
+    if (smtp?.success) {
+      const outgoing = smtpCredentials(smtp.data, credentials, imapUser, imapPassword);
+      if (!outgoing.smtp_pass) { res.status(400).json({ error: '请填写 SMTP 或 IMAP 密码' }); return; }
+      updated = { ...updated, ...outgoing };
+    }
     const { rowCount } = await pool.query(
       "UPDATE email_accounts SET credentials_enc = $1 WHERE id = $2 AND user_id = $3 AND account_type = 'imap' AND enabled = TRUE AND credentials_enc IS NOT DISTINCT FROM $4",
-      [enc.encrypt(JSON.stringify({ ...credentials, ...settings })), req.params.id, userId, previous],
+      [enc.encrypt(JSON.stringify(updated)), req.params.id, userId, previous],
     );
     if (!rowCount) { res.status(409).json({ error: '邮箱配置已变更，请刷新后重试' }); return; }
+    if (imap?.success) req.app.locals.onImapConnected?.(req.params.id, 5);
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: 'Internal error' });
@@ -236,21 +279,21 @@ router.post('/accounts', async (req, res) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email_address)) {
       res.status(400).json({ error: 'Invalid email_address format' }); return;
     }
-    const VALID_TYPES = ['imap', 'gmail', 'smtp', 'forward'];
+    const VALID_TYPES = ['imap', 'gmail', 'outlook', 'smtp', 'forward'];
     if (!VALID_TYPES.includes(account_type)) {
       res.status(400).json({ error: `account_type must be one of: ${VALID_TYPES.join(', ')}` }); return;
     }
 
     const smtpConfig = smtp === undefined ? null : smtpSettingsSchema.safeParse(smtp);
-    if (smtpConfig && (account_type !== 'imap' || !smtpConfig.success || !smtpConfig.data.password)) {
+    if (smtpConfig && (account_type !== 'imap' || !smtpConfig.success || !(smtpConfig.data.password || credentials?.imap_pass))) {
       res.status(400).json({ error: '请为 IMAP 邮箱填写完整有效的 SMTP 设置' });
       return;
     }
 
     // Test IMAP connection before saving
     if (account_type === 'imap' && credentials?.imap_pass) {
-      const imapHost = credentials.imap_host ?? 'imap.gmail.com';
-      if (PRIVATE_HOST_RE.test(imapHost)) {
+      const imapHost = credentials.imap_host?.trim() || '';
+      if (!imapHost || PRIVATE_HOST_RE.test(imapHost)) {
         res.status(400).json({ error: 'IMAP host must be a public address' }); return;
       }
       const cfg = {
@@ -285,13 +328,13 @@ router.post('/accounts', async (req, res) => {
 
     const id = randomUUID();
     const imap = account_type === 'imap' && credentials?.imap_pass ? {
-      host: credentials.imap_host ?? 'imap.gmail.com',
+      host: credentials.imap_host?.trim() || '',
       port: credentials.imap_port ?? 993,
       secure: (credentials.imap_port ?? 993) === 993,
       user: credentials.imap_user ?? email_address,
       pass: credentials.imap_pass,
     } : undefined;
-    const outgoing = smtpConfig?.success ? smtpCredentials(smtpConfig.data) : undefined;
+    const outgoing = smtpConfig?.success ? smtpCredentials(smtpConfig.data, undefined, imap?.user ?? email_address, imap?.pass) : undefined;
     const encrypted = imap || outgoing
       ? new Encryption(process.env.ENCRYPTION_KEY!).encrypt(JSON.stringify({ ...imap, ...outgoing }))
       : null;
@@ -301,6 +344,7 @@ router.post('/accounts', async (req, res) => {
       [id, userId, email_address, display_name ?? email_address, account_type, encrypted]
     );
 
+    if (imap) req.app.locals.onImapConnected?.(id, 5);
     logger.info('Account created', { id, email_address, account_type });
     res.status(201).json({ account_id: id, email_address, account_type });
   } catch (err) {

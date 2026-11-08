@@ -5,6 +5,8 @@ import { existsSync } from 'fs';
 import { resolve } from 'path';
 import { randomBytes, createHmac, timingSafeEqual } from 'crypto';
 import cors from 'cors';
+import { exchangeOutlookCode, outlookAuthorizationUrl, outlookConfigured, verifyOutlookInbox } from '../../ingestion/outlook-oauth.ts';
+import { Encryption } from '../../security/encryption.ts';
 import { getPool } from '../../storage/pg-pool.ts';
 import { logger } from '../../utils/logger.ts';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware.ts';
@@ -24,7 +26,9 @@ export class WebInterface implements IUserInterface {
   // In-memory CSRF state store for Gmail OAuth: state → { accountId, expiresAt }
   private oauthStates = new Map<string, { accountId: string; expiresAt: number }>();
 
-  constructor(private port: number = 3000) {}
+  private outlookStates = new Map<string, { accountId: string; userId: string; verifier: string; expiresAt: number }>();
+
+  constructor(private port: number = 3000, private onImapConnected?: (id: string, interval: number) => void) {}
 
   async initialize(config: InterfaceConfig): Promise<void> {
     if (config.credentials?.port) this.port = Number(config.credentials.port);
@@ -132,6 +136,7 @@ export class WebInterface implements IUserInterface {
   private async setupRoutes(): Promise<void> {
     this.app.get('/health', (_req, res) => res.json({ ok: true }));
 
+    this.app.locals.onImapConnected = this.onImapConnected;
     const { default: apiRouter } = await import('./routes/index.ts');
     this.app.use('/api', rateLimitMiddleware('api_calls'), demoGuard, apiRouter);
 
@@ -192,7 +197,6 @@ export class WebInterface implements IUserInterface {
 
         // Persist tokens encrypted against the account
         const { CredentialManager } = await import('../../security/credential-manager.ts');
-        const { Encryption }        = await import('../../security/encryption.ts');
         const enc  = new Encryption(process.env.ENCRYPTION_KEY!);
         const cred = new CredentialManager(enc);
         await cred.storeEmailCredentials(accountId, tokens);
@@ -202,6 +206,68 @@ export class WebInterface implements IUserInterface {
       } catch (err) {
         logger.error('Gmail OAuth callback failed', { err });
         res.status(500).send('Authentication failed');
+      }
+    });
+
+    this.app.post('/auth/outlook/start', requireAuth, rateLimitMiddleware('auth_attempts'), demoGuard, async (req, res) => {
+      const { accountId } = req.body ?? {};
+      if (typeof accountId !== 'string' || !accountId) {
+        res.status(400).json({ error: '缺少邮箱账号 ID' }); return;
+      }
+      if (!outlookConfigured()) {
+        res.status(503).json({ error: '服务器尚未配置 Microsoft OAuth 凭据' }); return;
+      }
+      try {
+        const userId = (req as Request & { user: { sub: string } }).user.sub;
+        const { rows: [account] } = await getPool().query(
+          "SELECT email_address FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'outlook' AND enabled = TRUE",
+          [accountId, userId],
+        );
+        if (!account) { res.status(404).json({ error: '找不到可授权的 Outlook 账号' }); return; }
+        const now = Date.now();
+        for (const [key, entry] of this.outlookStates) {
+          if (entry.expiresAt <= now) this.outlookStates.delete(key);
+        }
+        const state = randomBytes(32).toString('base64url');
+        const verifier = randomBytes(32).toString('base64url');
+        this.outlookStates.set(state, { accountId, userId, verifier, expiresAt: now + 10 * 60_000 });
+        res.json({ url: outlookAuthorizationUrl(state, verifier, account.email_address) });
+      } catch (error) {
+        logger.error('Outlook OAuth start failed', { message: error instanceof Error ? error.message : String(error) });
+        res.status(500).json({ error: '无法启动 Outlook 授权' });
+      }
+    });
+
+    this.app.get('/auth/outlook/callback', async (req, res) => {
+      const { code, state } = req.query;
+      const entry = typeof state === 'string' ? this.outlookStates.get(state) : undefined;
+      if (typeof state === 'string') this.outlookStates.delete(state);
+      if (!entry || entry.expiresAt <= Date.now()) {
+        res.status(403).send('授权已过期，请回到设置重试。'); return;
+      }
+      if (typeof code !== 'string' || !code) {
+        res.status(400).send('Microsoft 授权未完成。'); return;
+      }
+      try {
+        const pool = getPool();
+        const { rows: [account] } = await pool.query(
+          "SELECT email_address, polling_interval_min FROM email_accounts WHERE id = $1 AND user_id = $2 AND account_type = 'outlook' AND enabled = TRUE",
+          [entry.accountId, entry.userId],
+        );
+        if (!account) { res.status(404).send('Outlook 账号不存在。'); return; }
+        const tokens = await exchangeOutlookCode(code, entry.verifier);
+        await verifyOutlookInbox(account.email_address, tokens.accessToken);
+        const enc = new Encryption(process.env.ENCRYPTION_KEY!);
+        const { rowCount } = await pool.query(
+          "UPDATE email_accounts SET credentials_enc = $1 WHERE id = $2 AND user_id = $3 AND account_type = 'outlook' AND enabled = TRUE",
+          [enc.encrypt(JSON.stringify(tokens)), entry.accountId, entry.userId],
+        );
+        if (!rowCount) { res.status(404).send('Outlook 账号不存在。'); return; }
+        this.onImapConnected?.(entry.accountId, account.polling_interval_min ?? 5);
+        res.redirect('/agent/settings');
+      } catch (error) {
+        logger.warn('Outlook OAuth callback failed', { message: error instanceof Error ? error.message : String(error) });
+        res.status(502).send('Outlook 连接失败。请确认选择了对应的 Microsoft 账号，并在 Outlook 设置中启用 IMAP。');
       }
     });
 
