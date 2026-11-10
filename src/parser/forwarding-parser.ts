@@ -5,6 +5,7 @@
 
 import type { RawEmail, ParsedEmail, Attachment } from '../types/index.ts';
 import { logger } from '../utils/logger.ts';
+import { imagePreviewHtml, parseMime } from './mime.ts';
 
 function decodeMime(s: string): string {
   return s.replace(/=\?([^?]+)\?([BQ])\?([^?]*)\?=/gi, (_m, _cs, enc, text) => {
@@ -61,26 +62,40 @@ export class ForwardingParser {
   constructor(private llm?: { complete(prompt: string): Promise<string> }) {}
 
   async parse(raw: RawEmail): Promise<ParsedEmail> {
-    const rawText = raw.raw;
+    const decoded = await parseMime(raw.rawBytes ?? raw.raw);
+    const rawText = decoded.text ?? '';
+    const from = decoded.from?.value[0];
+    const bodyHtml = imagePreviewHtml(decoded);
 
-    // Method 1: Regex (fast, free)
-    const regexResult = this.tryRegexParse(rawText);
+    // Inspect forwarded headers only after decoding the MIME body.
+    const regexResult = raw.source === 'forward' ? this.tryRegexParse(rawText) : null;
     if (regexResult) {
       logger.debug('Email parsed with regex', { method: 'regex', confidence: regexResult.parseConfidence });
-      return this.buildParsedEmail(raw, regexResult);
+      return this.buildParsedEmail(raw, { ...regexResult, bodyHtml });
     }
 
     // Method 2: LLM fallback
-    if (this.llm) {
+    if (raw.source === 'forward' && this.llm) {
       logger.debug('Regex failed, falling back to LLM parsing');
       const llmResult = await this.tryLLMParse(rawText);
       if (llmResult) {
-        return this.buildParsedEmail(raw, llmResult);
+        return this.buildParsedEmail(raw, { ...llmResult, bodyHtml });
       }
     }
 
     // Method 3: Best-effort from headers
-    return this.parseFromHeaders(raw);
+    const fallback = this.parseFromHeaders(raw);
+    const to = Array.isArray(decoded.to) ? decoded.to[0] : decoded.to;
+    return {
+      ...fallback,
+      originalSender: from?.address ?? fallback.originalSender,
+      originalSenderName: from?.name || fallback.originalSenderName,
+      originalDate: decoded.date ?? fallback.originalDate,
+      recipientEmail: to?.value[0]?.address ?? fallback.recipientEmail,
+      subject: decoded.subject ?? fallback.subject,
+      bodyText: rawText,
+      bodyHtml,
+    };
   }
 
   // ─── Regex Parser ───────────────────────────────────────────
@@ -176,6 +191,8 @@ If a field cannot be found, set it to null.
     const from    = raw.headers['from']    || raw.headers['From']    || '';
     const subject = raw.headers['subject'] || raw.headers['Subject'] || '(no subject)';
     const date    = raw.headers['date']    || raw.headers['Date']    || '';
+    const parsedDate = new Date(date);
+    const to = raw.headers['to'] || raw.headers['To'] || '';
 
     const emailMatch = from.match(/<([^>]+)>/) || from.match(/([^\s]+@[^\s]+)/);
     const nameMatch  = from.match(/^"?([^"<]+)"?\s*</);
@@ -185,8 +202,8 @@ If a field cannot be found, set it to null.
       accountId:          raw.accountId,
       originalSender:     emailMatch?.[1]?.trim() ?? from,
       originalSenderName: nameMatch?.[1]?.trim() ?? '',
-      recipientEmail:     '',
-      originalDate:       date ? new Date(date) : new Date(raw.receivedAt),
+      recipientEmail:     to,
+      originalDate:       Number.isNaN(parsedDate.getTime()) ? raw.receivedAt : parsedDate,
       subject:            decodeMime(subject.trim()),
       bodyText:           this.extractBody(raw.raw),
       bodyHtml:           undefined,

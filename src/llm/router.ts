@@ -23,6 +23,7 @@ export interface LLMOptions {
   maxTokens?:   number;
   temperature?: number;
   system?:      string;
+  responseFormat?: 'text' | 'json_object';
 }
 
 export interface LLMProvider_I {
@@ -192,7 +193,7 @@ class OpenAIProvider implements LLMProvider_I {
       ],
       max_tokens:  options?.maxTokens  ?? 2048,
       temperature: options?.temperature ?? 0.3,
-      response_format: { type: 'json_object' }  // Force JSON output
+      ...(options?.responseFormat === 'text' ? {} : { response_format: { type: 'json_object' } }),
     });
 
     return response.choices[0]?.message?.content ?? '';
@@ -231,7 +232,7 @@ class GeminiProvider implements LLMProvider_I {
       generationConfig: {
         maxOutputTokens:  options?.maxTokens  ?? 2048,
         temperature:      options?.temperature ?? 0.3,
-        responseMimeType: 'application/json',
+        responseMimeType: options?.responseFormat === 'text' ? 'text/plain' : 'application/json',
       },
     } as any);
 
@@ -320,7 +321,14 @@ class CustomProvider implements LLMProvider_I {
   constructor(private config: LLMConfig) {}
 
   async complete(prompt: string, options?: LLMOptions): Promise<string> {
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+    const endpoint = `${this.config.baseUrl}/chat/completions`;
+    const host = new URL(endpoint).hostname;
+    const isQwenOnDashScope = this.config.model.startsWith('qwen') &&
+      (host === 'dashscope.aliyuncs.com' || host === 'dashscope-intl.aliyuncs.com' || host.endsWith('.maas.aliyuncs.com'));
+    // DashScope JSON mode requires a JSON instruction. Plain-text helpers omit it.
+    const useJsonMode = options?.responseFormat !== 'text' &&
+      (!isQwenOnDashScope || options?.responseFormat === 'json_object' || /\bjson\b/i.test(`${options?.system ?? ''} ${prompt}`));
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -334,7 +342,11 @@ class CustomProvider implements LLMProvider_I {
         ],
         max_tokens:       options?.maxTokens  ?? 2048,
         temperature:      options?.temperature ?? 0.3,
-        response_format:  { type: 'json_object' },
+        ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
+        ...(isQwenOnDashScope ? { enable_thinking: false } : {}),
+        ...(host === 'api.deepseek.com' && this.config.model === 'deepseek-flash'
+          ? { thinking: { type: 'disabled' } }
+          : {}),
       })
     });
 

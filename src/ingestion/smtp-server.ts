@@ -74,10 +74,10 @@ export class SMTPIngestion {
 
     stream.on('data', (chunk: Buffer) => chunks.push(chunk));
     stream.on('end', async () => {
-      const raw = Buffer.concat(chunks).toString('utf8');
+      const rawBytes = Buffer.concat(chunks);
 
       try {
-        const parsed = await simpleParser(raw);
+        const parsed = await simpleParser(rawBytes);
 
         // Resolve recipient account from RCPT TO address
         const recipientAddress = session.envelope?.rcptTo?.[0]?.address || '';
@@ -88,7 +88,8 @@ export class SMTPIngestion {
           accountId,
           receivedAt:  new Date(),
           source:      'forward',
-          raw,
+          raw: rawBytes.toString('utf8'),
+          rawBytes,
           headers:     Object.fromEntries(
             Object.entries(parsed.headers).map(([k, v]) => [k, String(v)])
           ),

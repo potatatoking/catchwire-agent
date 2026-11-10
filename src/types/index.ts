@@ -31,6 +31,7 @@ export interface RawEmail {
   receivedAt: Date;
   source: AccountType;
   raw: string;
+  rawBytes?: Buffer;
   headers: Record<string, string>;
 }
 

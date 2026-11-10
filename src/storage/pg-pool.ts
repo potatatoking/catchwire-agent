@@ -297,6 +297,9 @@ export async function initPgSchema(): Promise<void> {
       ALTER TABLE email_log ADD COLUMN IF NOT EXISTS unsubscribe_url TEXT;
       ALTER TABLE email_log ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMPTZ;
       ALTER TABLE email_log ADD COLUMN IF NOT EXISTS labels JSONB DEFAULT '[]';`,
+
+    '012_email_image_previews': `
+      ALTER TABLE email_log ADD COLUMN IF NOT EXISTS body_html TEXT;`,
   };
 
   for (const [name, sql] of Object.entries(migrations)) {

@@ -74,7 +74,7 @@ export const EmailLogRepo = {
   async insert(data: {
     id: string; accountId: string; threadId?: string;
     sender: string; senderName?: string; subject?: string;
-    body?: string; summary?: string; priority?: string; intent?: string;
+    body?: string; bodyHtml?: string; summary?: string; priority?: string; intent?: string;
     receivedAt?: Date; agentResponse?: string;
     parseMethod?: string; parseConfidence?: number;
     processingMs?: number; llmProvider?: string; llmModel?: string;
@@ -82,8 +82,8 @@ export const EmailLogRepo = {
     await getPool().query(
       `INSERT INTO email_log
          (id, account_id, thread_id, from_address, sender_name, subject, body, summary,
-          priority, intent, received_at, agent_response, llm_provider, processing_ms)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          priority, intent, received_at, agent_response, llm_provider, processing_ms, body_html)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        ON CONFLICT (id) DO NOTHING`,
       [
         data.id, data.accountId, data.threadId ?? null,
@@ -92,7 +92,7 @@ export const EmailLogRepo = {
         data.priority ?? 'medium', data.intent ?? null,
         data.receivedAt ?? new Date(),
         data.agentResponse ? JSON.parse(data.agentResponse) : null,
-        data.llmProvider ?? null, data.processingMs ?? null,
+        data.llmProvider ?? null, data.processingMs ?? null, data.bodyHtml ?? null,
       ]
     );
   },

@@ -1,3 +1,4 @@
+import { cleanLegacyDisplay } from '../../../parser/legacy-display.ts';
 import { Router } from 'express';
 import { getPool } from '../../../storage/pg-pool.ts';
 import { AnalyticsEngine } from '../../../analytics/analytics-engine.ts';
@@ -135,7 +136,7 @@ router.get('/accounts/:id/emails', async (req, res) => {
                 processed_at DESC, id DESC LIMIT 20 OFFSET $2`,
       [all ? userId : req.params.id, (page - 1) * 20]
     );
-    res.json(rows);
+    res.json(await Promise.all(rows.map(cleanLegacyDisplay)));
   } catch {
     res.status(500).json({ error: 'Internal error' });
   }

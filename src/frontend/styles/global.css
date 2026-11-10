@@ -79,6 +79,7 @@ html, body, #app {
 .nav-item:hover::after { opacity: 1; }
 
 .nav-spacer { flex: 1; }
+.nav-item-label, .nav-backdrop, .top-app-bar .mobile-nav-toggle { display: none; }
 
 /* ── Main Content ────────────────────────────────────────────────────────── */
 
@@ -644,14 +645,35 @@ input.md-input, select.md-input, textarea.md-input {
   /* Detail pane wrapper slides over the list on mobile */
   .detail-pane-wrapper {
     display: none;
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 50;
+    z-index: 1;
   }
   .detail-pane-wrapper.visible { display: flex; }
   .detail-back-btn { display: flex; align-items: center; justify-content: center; }
   :root { --nav-w: 0px; }
+  .app-shell { height: 100dvh; }
+  .inbox-wrapper { position: relative; }
+  .top-app-bar { gap: 8px; padding: 0 10px; }
+  .top-app-bar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-app-bar .icon-btn { flex-shrink: 0; }
+  .top-app-bar .mobile-nav-toggle { display: flex; width: 40px; height: 40px; }
+  .nav-backdrop { display: block; position: fixed; inset: 0; z-index: 100; border: 0; background: rgba(0,0,0,.45); }
   .nav-rail { display: none; }
+  .nav-rail.open {
+    display: flex;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(260px, 82vw);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    align-items: stretch;
+    padding: 12px 10px max(12px, env(safe-area-inset-bottom));
+    z-index: 110;
+  }
+  .nav-rail .nav-item { width: 100%; min-height: 44px; flex-shrink: 0; justify-content: flex-start; gap: 12px; padding: 0 12px; }
+  .nav-rail .nav-item::after { display: none; }
+  .nav-item-label { display: inline; }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -943,10 +965,17 @@ input.md-input, select.md-input, textarea.md-input {
     box-shadow: -4px 0 24px rgba(0,0,0,.12);
   }
 }
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .agent-chat.open {
-    width: 100vw;
+    inset: var(--chat-viewport-top, 0px) 0 auto;
+    width: 100%;
+    height: var(--chat-viewport-height, 100dvh);
+    transition: none;
   }
+  .chat-messages { min-height: 0; overscroll-behavior: contain; }
+  .chat-input-row { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .chat-input { min-width: 0; min-height: 44px; font-size: 16px; }
+  .chat-send-btn { width: 44px; height: 44px; }
 }
 
 /* Mailbox controls and per-account settings */

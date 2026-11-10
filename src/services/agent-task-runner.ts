@@ -280,7 +280,7 @@ Only return the JSON object, no extra text.`;
     const prompt = `${langNote}Summarize these ${emails.length} emails as a short readable digest. Use plain prose paragraphs — NO JSON, NO code blocks, NO bullet lists of keys. Just write sentences.\n\n${emailList}`;
 
     try {
-      let summary = await llm.complete(prompt, { maxTokens: 500, temperature: 0.3 });
+      let summary = await llm.complete(prompt, { maxTokens: 500, temperature: 0.3, responseFormat: 'text' });
 
       // Strip markdown code fences
       summary = summary.replace(/^```[a-z]*\n?/gim, '').replace(/\n?```$/gim, '').trim();

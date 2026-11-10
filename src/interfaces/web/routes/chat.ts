@@ -123,7 +123,6 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
 
     // Fallback: general LLM conversation with email context
     const { LLMRouter } = await import('../../../llm/router.ts');
-    const { getPool }   = await import('../../../storage/pg-pool.ts');
     const llm = new LLMRouter(llmConfig);
 
     // Get recent email context (last 5 emails)
@@ -154,7 +153,7 @@ Respond conversationally and helpfully. If asked about emails, reference the con
 If the user wants to take action (send, forward, unsubscribe, search), explain that they can type natural language commands like "unsubscribe all newsletters" or "find emails from Alex".
 Keep replies concise (2-4 sentences).`;
 
-    let reply = (await llm.complete(prompt, { maxTokens: 300, temperature: 0.7 })).trim();
+    let reply = (await llm.complete(prompt, { maxTokens: 300, temperature: 0.7, responseFormat: 'text' })).trim();
     // Strip JSON wrapper if LLM returns {"response":"..."} or {"reply":"..."}
     try {
       const parsed = JSON.parse(reply);

@@ -79,6 +79,7 @@ export class ActionController {
         senderName:   processedEmail.originalSenderName,
         subject:      processedEmail.subject,
         body:         processedEmail.bodyText,
+        bodyHtml:     processedEmail.bodyHtml,
         summary:      analysisResult.summary,
         priority:     analysisResult.priority,
         intent:       analysisResult.intent,

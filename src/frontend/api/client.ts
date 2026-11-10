@@ -83,6 +83,7 @@ export interface EmailItem {
 
 export interface EmailDetail extends EmailItem {
   body?:        string;
+  body_html?:   string;
   in_reply_to?: string;
   references?:  string;
   thread?:      Thread | null;

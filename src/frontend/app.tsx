@@ -1,4 +1,3 @@
-// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -137,6 +136,7 @@ export function App() {
   const magicPending   = useSignal(false);
   const isDemo         = useSignal(false);
   const chatOpen       = useSignal(false);
+  const navOpen        = useSignal(false);
 
   // Magic link auto-login: ?magic=<token> in URL
   useEffect(() => {
@@ -230,12 +230,20 @@ export function App() {
         </div>
       )}
       <div class={`app-shell${isDemo.value ? ' demo-offset' : ''}`}>
-        <NavRail currentPath={path.value} />
+        {navOpen.value && (
+          <button class="nav-backdrop" aria-label="关闭导航" onClick={() => { navOpen.value = false; }} />
+        )}
+        <NavRail currentPath={path.value} open={navOpen.value} onNavigate={() => { navOpen.value = false; }} />
         <div class="main-content">
           <TopAppBar
             title={isInbox ? '收件箱' : (PAGE_TITLES[path.value] ?? '邮件助手')}
             info={PAGE_INFO[path.value]}
-            onChatToggle={() => { chatOpen.value = !chatOpen.value; }}
+            navOpen={navOpen.value}
+            onNavToggle={() => { navOpen.value = !navOpen.value; }}
+            onChatToggle={() => {
+              navOpen.value = false;
+              chatOpen.value = !chatOpen.value;
+            }}
             chatOpen={chatOpen.value}
           />
           <div class={isInbox ? 'inbox-wrapper' : 'page-wrapper'}>

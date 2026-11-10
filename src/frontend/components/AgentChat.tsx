@@ -1,4 +1,3 @@
-// Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
@@ -40,10 +39,32 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
   const input       = useSignal('');
   const loading     = useSignal(false);
   const bottomRef   = useRef<HTMLDivElement>(null);
+  const panelRef    = useRef<HTMLElement>(null);
   const inputRef    = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 100);
+    if (!open) return;
+    const mobile = window.matchMedia('(max-width: 768px)').matches;
+    if (!mobile) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(timer);
+    }
+    const viewport = window.visualViewport;
+    const panel = panelRef.current;
+    if (!viewport || !panel) return;
+    const fit = () => {
+      panel.style.setProperty('--chat-viewport-height', `${viewport.height}px`);
+      panel.style.setProperty('--chat-viewport-top', `${viewport.offsetTop}px`);
+    };
+    fit();
+    viewport.addEventListener('resize', fit);
+    viewport.addEventListener('scroll', fit);
+    return () => {
+      viewport.removeEventListener('resize', fit);
+      viewport.removeEventListener('scroll', fit);
+      panel.style.removeProperty('--chat-viewport-height');
+      panel.style.removeProperty('--chat-viewport-top');
+    };
   }, [open]);
 
   useEffect(() => {
@@ -79,11 +100,11 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
     } catch {
       messages.value = [
         ...messages.value.slice(0, -1),
-        { id: uid(), role: 'assistant', content: 'Sorry, something went wrong. Please try again.' },
+        { id: uid(), role: 'assistant', content: '暂时无法获取助手回复，请稍后重试。' },
       ];
     } finally {
       loading.value = false;
-      setTimeout(() => inputRef.current?.focus(), 50);
+      if (!window.matchMedia('(max-width: 768px)').matches) inputRef.current?.focus();
     }
   }
 
@@ -111,7 +132,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); }
   }
 
   const SUGGESTIONS = [
@@ -122,7 +143,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
   ];
 
   return (
-    <aside class={`agent-chat${open ? ' open' : ''}`}>
+    <aside ref={panelRef} class={`agent-chat${open ? ' open' : ''}`} inert={!open} aria-label="助手对话">
       {/* Header */}
       <div class="chat-header">
         <div class="chat-header-title">
@@ -194,7 +215,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
           rows={1}
           disabled={loading.value}
         />
-        <button class="chat-send-btn" onClick={send} disabled={loading.value || !input.value.trim()}>
+        <button class="chat-send-btn" aria-label="发送消息" onClick={send} disabled={loading.value || !input.value.trim()}>
           <span class="material-symbols-rounded">send</span>
         </button>
       </div>

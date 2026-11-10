@@ -384,18 +384,107 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
   );
 }
 
-// lazy-loads full email body
+function readEmailHtml(html: string) {
+  // Template contents stay inert. Only allowlisted image URLs reach the live DOM.
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const images = new Map<string, { src: string; alt: string; external: boolean }>();
+  for (const img of template.content.querySelectorAll('img[src]')) {
+    const src = img.getAttribute('src')?.trim() ?? '';
+    const external = /^https:\/\//i.test(src);
+    const inline = /^data:image\/(?:png|jpeg|gif|webp|avif|bmp);base64,[a-z0-9+/]+=*$/i.test(src);
+    if ((!external && !inline) || images.has(src)) continue;
+    images.set(src, { src, alt: img.getAttribute('alt') || '邮件图片', external });
+    if (images.size === 30) break;
+  }
+  // Retain readable text and block breaks without exposing tracking URLs as text.
+  const blocks = new Set(['ADDRESS', 'BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'HR', 'LI', 'P', 'SECTION', 'TABLE', 'TR']);
+  const ignored = new Set(['HEAD', 'IMG', 'SCRIPT', 'STYLE', 'SVG', 'TEMPLATE', 'NOSCRIPT']);
+  const parts: Array<{ text: string; href?: string }> = [];
+  const append = (text: string, href?: string) => {
+    const previous = parts.at(-1);
+    if (!href && previous && !previous.href) previous.text += text;
+    else parts.push({ text, href });
+  };
+  const visit = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      append((node.textContent ?? '').replace(/\s+/g, ' '));
+      return;
+    }
+    if (node instanceof Element) {
+      if (ignored.has(node.tagName) || node.hasAttribute('hidden')) return;
+      if (node.tagName === 'BR' || blocks.has(node.tagName)) append('\n');
+      if (node.tagName === 'TD' || node.tagName === 'TH') append(' ');
+      if (node.tagName === 'A') {
+        const href = node.getAttribute('href')?.trim() ?? '';
+        const label = node.textContent?.replace(/\s+/g, ' ').trim();
+        if (label && /^https?:\/\//i.test(href)) {
+          try {
+            const url = new URL(href);
+            if (!url.username && !url.password) {
+              append(label === href ? url.hostname : label, url.href);
+              return;
+            }
+          } catch {
+            // Leave malformed destinations as plain text.
+          }
+        }
+      }
+    }
+    for (const child of node.childNodes) visit(child);
+  };
+  visit(template.content);
+  for (const part of parts) {
+    if (!part.href) part.text = part.text.replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n');
+  }
+  if (parts[0] && !parts[0].href) parts[0].text = parts[0].text.trimStart();
+  const last = parts.at(-1);
+  if (last && !last.href) last.text = last.text.trimEnd();
+  return { parts: parts.filter(part => part.text), images: [...images.values()] };
+}
+
+// lazy-loads full email body and previews
 function FullBody({ emailId }: { emailId: string }) {
-  const body    = useSignal<string | null>(null);
+  const body = useSignal<Array<{ text: string; href?: string }>>([]);
+  const images = useSignal<ReturnType<typeof readEmailHtml>['images']>([]);
+  const showExternal = useSignal(false);
   const loading = useSignal(true);
+  const failed = useSignal(false);
   useEffect(() => {
+    let active = true;
+    loading.value = true;
+    failed.value = false;
+    showExternal.value = false;
     api.emails.get(emailId)
-      .then((d) => { body.value = d.body ?? '(no body)'; })
-      .catch(() => { body.value = '(could not load)'; })
-      .finally(() => { loading.value = false; });
+      .then((d) => {
+        if (!active) return;
+        const view = d.body_html ? readEmailHtml(d.body_html) : undefined;
+        body.value = view?.parts.length ? view.parts : view?.images.length || !d.body ? [] : [{ text: d.body }];
+        images.value = view?.images ?? [];
+      })
+      .catch(() => { if (active) failed.value = true; })
+      .finally(() => { if (active) loading.value = false; });
+    return () => { active = false; };
   }, [emailId]);
   if (loading.value) return <div class="email-body-text" style="opacity:.5">加载中…</div>;
-  return <div class="email-body-text">{body.value}</div>;
+  if (failed.value) return <div class="email-body-text">无法加载邮件正文</div>;
+  return (
+    <div class="email-body-text">
+      {images.value.some(img => img.external) && !showExternal.value && (
+        <button class="btn btn-outline" style="display:block;margin-top:12px"
+          onClick={() => { showExternal.value = true; }}>加载外链图片</button>
+      )}
+      {body.value.length === 0 && images.value.length === 0 && '没有可显示的正文'}
+      {body.value.map((part, index) => part.href ? (
+        <a key={index} href={part.href} target="_blank" rel="noopener noreferrer"
+          title={part.href} style="text-decoration:underline">{part.text}</a>
+      ) : part.text)}
+      {images.value.filter(img => !img.external || showExternal.value).map(img => (
+        <img key={img.src} src={img.src} alt={img.alt} loading="lazy" referrerPolicy="no-referrer"
+          style="display:block;max-width:100%;height:auto;margin-top:12px" />
+      ))}
+    </div>
+  );
 }
 
 // ── Inbox ──────────────────────────────────────────────────────────────────

@@ -81,7 +81,7 @@ export class GmailWebhook {
       format: 'raw',
     });
 
-    const raw = Buffer.from(res.data.raw, 'base64').toString('utf8');
+    const rawBytes = Buffer.from(res.data.raw, 'base64url');
     const headers: Record<string, string> = {};
     for (const h of res.data.payload?.headers ?? []) {
       headers[h.name.toLowerCase()] = h.value;
@@ -92,7 +92,8 @@ export class GmailWebhook {
       accountId,
       receivedAt: new Date(),
       source:     'gmail',
-      raw,
+      raw: rawBytes.toString('utf8'),
+      rawBytes,
       headers,
     });
   }

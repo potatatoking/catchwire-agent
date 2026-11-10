@@ -1,6 +1,8 @@
+import { cleanLegacyDisplay } from '../../../parser/legacy-display.ts';
 import { Encryption } from '../../../security/encryption.ts';
 import type { SmtpCredentials } from '../../../services/smtp-settings.ts';
 import { Router } from 'express';
+import { imagePreviewHtml, parseMime } from '../../../parser/mime.ts';
 import { getPool } from '../../../storage/pg-pool.ts';
 import { EmailSender } from '../../../services/email-sender.ts';
 import { FeedbackRepo } from '../../../storage/sqlite.adapter.ts';
@@ -14,7 +16,7 @@ router.get('/emails/:id', async (req, res) => {
     const userId = (req as any).user?.sub;
     const { rows } = await getPool().query(
       `SELECT el.id, el.account_id, el.thread_id, el.from_address, el.sender_name, el.subject,
-              el.body, el.summary, el.priority, el.intent, el.in_reply_to, el."references",
+              el.body, el.body_html, el.summary, el.priority, el.intent, el.in_reply_to, el."references",
               el.received_at, el.agent_response, el.user_action, el.processed_at AS created_at
        FROM email_log el
        JOIN email_accounts ea ON ea.id = el.account_id
@@ -31,7 +33,42 @@ router.get('/emails/:id', async (req, res) => {
       );
       thread = tr[0] ?? null;
     }
-    res.json({ ...row, thread });
+    // Older rows can contain a MIME body with its outer headers stripped.
+    const boundary = typeof row.body === 'string'
+      ? /^--([!-~]{1,70})\r?\n(?=Content-[\w-]+:)/i.exec(row.body)?.[1]
+      : undefined;
+    if (boundary && row.body.includes(`--${boundary}--`)) {
+      try {
+        const escaped = boundary.replace(/["\\]/g, '\\$&');
+        const decoded = await parseMime(
+          `MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="${escaped}"\r\n\r\n${row.body}`,
+        );
+        row.body_html ??= imagePreviewHtml(decoded);
+        if (decoded.text || row.body_html) row.body = decoded.text ?? '';
+      } catch {
+        // Keep the stored body when there is not enough MIME data to recover it.
+      }
+    }
+    if (!row.body_html && typeof row.body === 'string' && row.body.length < 1024 * 1024) {
+      const looksLikeHtml = (text: string) => /^\s*(?:<!doctype\s+html|<(?:html|head|body|div|table|p|img|center|meta|style)\b)/i.test(text);
+      const compact = row.body.replace(/\s+/g, '');
+      const encodedHtml = compact.length >= 16 && compact.length % 4 === 0 &&
+        /^[a-z0-9+/]+={0,2}$/i.test(compact) &&
+        looksLikeHtml(Buffer.from(compact, 'base64').toString('utf8'));
+      if (encodedHtml || looksLikeHtml(row.body)) {
+        try {
+          const encoding = encodedHtml ? 'base64' : /(?:src|href)=3D|=\r?\n/i.test(row.body) ? 'quoted-printable' : '8bit';
+          const decoded = await parseMime(
+            `Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: ${encoding}\r\n\r\n${row.body}`,
+          );
+          row.body_html = imagePreviewHtml(decoded);
+          row.body = decoded.text ?? '';
+        } catch {
+          // Preserve the original text when decoding fails.
+        }
+      }
+    }
+    res.json({ ...await cleanLegacyDisplay(row), thread });
   } catch (err) {
     logger.error('GET /emails/:id error', { err });
     res.status(500).json({ error: 'Internal error' });
