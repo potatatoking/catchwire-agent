@@ -278,7 +278,8 @@ router.get('/accounts/:id/persona', async (req, res) => {
     res.json({
       tone:          row?.tone          ?? 'professional',
       autonomyLevel: row?.autonomy_level ?? 'draft',
-      language:      row?.language      ?? 'auto',
+      language:      row?.language      ?? 'zh',
+      summaryLanguage: row?.summary_language ?? 'zh',
       useEmoji:      Boolean(row?.use_emoji),
       llmProvider:   row?.llm_provider  ?? process.env.LLM_PROVIDER ?? 'openrouter',
       llmModel:      row?.llm_model     ?? process.env.LLM_MODEL ?? '',

@@ -47,7 +47,8 @@ export function Settings() {
   const baseUrl    = useSignal('');
   const tone       = useSignal('professional');
   const autonomy   = useSignal('draft');
-  const language   = useSignal('auto');
+  const language   = useSignal('zh');
+  const summaryLanguage = useSignal<'zh' | 'en' | 'auto'>('zh');
   const useEmoji   = useSignal(false);
   const savedMsg   = useSignal('');
   const loadingP   = useSignal(false);
@@ -177,23 +178,28 @@ export function Settings() {
   };
 
   useEffect(() => {
-    if (!selectedAccount.value) return;
+    const accountId = selectedAccount.value;
+    if (!accountId) return;
+    let active = true;
     loadingP.value = true;
-    api.accounts.persona(selectedAccount.value).then((p) => {
+    api.accounts.persona(accountId).then((p) => {
+      if (!active) return;
       provider.value  = p.llmProvider  ?? 'openrouter';
       llmModel.value  = p.llmModel     ?? '';
       tone.value      = p.tone         ?? 'professional';
       autonomy.value  = p.autonomyLevel ?? 'draft';
-      language.value  = p.language     ?? 'auto';
+      language.value  = p.language     ?? 'zh';
+      summaryLanguage.value = p.summaryLanguage ?? 'zh';
       useEmoji.value  = p.useEmoji     ?? false;
-    }).catch(console.error).finally(() => { loadingP.value = false; });
+    }).catch(console.error).finally(() => { if (active) loadingP.value = false; });
+    return () => { active = false; };
   }, [selectedAccount.value]);
 
   const savePersona = () => {
     if (!selectedAccount.value) return;
     const patch: any = {
       tone: tone.value, autonomyLevel: autonomy.value,
-      language: language.value, useEmoji: useEmoji.value,
+      language: language.value, summaryLanguage: summaryLanguage.value, useEmoji: useEmoji.value,
       llmProvider: provider.value,
       llmModel: llmModel.value || undefined,
     };
@@ -691,6 +697,16 @@ export function Settings() {
                   ))}
                 </div>
               </div>
+
+              <label style="display:block;margin-bottom:16px">
+                <div class="field-label">AI 摘要语言</div>
+                <select class="md-input" value={summaryLanguage.value}
+                  onChange={(e) => { summaryLanguage.value = e.currentTarget.value as 'zh' | 'en' | 'auto'; }}>
+                  <option value="zh">简体中文</option>
+                  <option value="en">英语</option>
+                  <option value="auto">跟随邮件语言</option>
+                </select>
+              </label>
 
               {/* Emoji */}
               <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;background:var(--surface-2);border-radius:var(--r-md)">

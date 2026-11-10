@@ -244,11 +244,11 @@ export class ActionController {
     const { rows } = await getPool().query('SELECT * FROM personas WHERE account_id = $1', [accountId]);
     const row = rows[0];
     if (!row) return {
-      tone: 'professional', useEmoji: false, language: 'auto', autonomyLevel: 'draft',
+      tone: 'professional', useEmoji: false, language: 'zh', summaryLanguage: 'zh', autonomyLevel: 'draft',
       llmConfig: { provider: process.env.LLM_PROVIDER || 'openrouter', apiKey: process.env.LLM_API_KEY, model: process.env.LLM_MODEL || 'google/gemini-flash-1.5', baseUrl: process.env.LLM_BASE_URL ?? undefined },
     };
     return {
-      tone: row.tone, useEmoji: row.use_emoji, language: row.language, autonomyLevel: row.autonomy_level,
+      tone: row.tone, useEmoji: row.use_emoji, language: row.language ?? 'zh', summaryLanguage: row.summary_language ?? 'zh', autonomyLevel: row.autonomy_level,
       shadowMode: row.shadow_mode, onboardingDone: row.onboarding_done,
       systemPrompt: row.system_prompt ?? undefined,
       llmConfig: { provider: row.llm_provider ?? process.env.LLM_PROVIDER, model: row.llm_model ?? process.env.LLM_MODEL, apiKey: process.env.LLM_API_KEY, baseUrl: row.llm_base_url ?? process.env.LLM_BASE_URL ?? undefined },

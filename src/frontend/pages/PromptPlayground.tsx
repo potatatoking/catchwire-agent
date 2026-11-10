@@ -15,11 +15,11 @@ Could you let me know if there's any update or if you need additional informatio
 Best regards,
 John`;
 
-const DEFAULT_PROMPT = `You are a professional email assistant. Analyze the email below and draft a concise, helpful reply.
+const DEFAULT_PROMPT = `你是一名专业的邮件助手。请分析以下邮件，并用简体中文起草一份简洁、有帮助的回复。
 
-Keep the tone {{tone}} and the response under {{max_words}} words.
+保持 {{tone}} 语气，回复不超过 {{max_words}} 字。
 
-Email:
+邮件正文：
 {{email_body}}`;
 
 export function PromptPlayground() {

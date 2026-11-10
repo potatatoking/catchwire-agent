@@ -195,6 +195,7 @@ export interface Persona {
   autonomyLevel:  string;
   useEmoji:       boolean;
   language:       string;
+  summaryLanguage?: 'zh' | 'en' | 'auto';
   shadowMode:     boolean;
   onboardingDone: boolean;
   llmProvider?:   string;
@@ -257,10 +258,10 @@ export const api = {
       req<{ success: boolean; messageId?: string }>(`/emails/${id}/reply`, {
         method: 'POST', body: JSON.stringify({ body, from }),
       }),
-    regenerate: (id: string, instruction: string, accountId: string) =>
+    regenerate: (id: string, instruction: string) =>
       req<{ suggestedReplies: Array<{ label: string; body: string; tone?: string }> }>(
         `/emails/${id}/regenerate`,
-        { method: 'POST', body: JSON.stringify({ instruction, accountId }) }
+        { method: 'POST', body: JSON.stringify({ instruction }) }
       ),
   },
 

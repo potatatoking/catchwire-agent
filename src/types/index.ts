@@ -6,7 +6,8 @@ export type Priority      = 'critical' | 'high' | 'medium' | 'low';
 export type AutonomyLevel = 'full' | 'draft' | 'consultative';
 export type AccountType   = 'gmail' | 'outlook' | 'imap' | 'forward';
 export type ToneType      = 'very_formal' | 'professional' | 'friendly' | 'casual';
-export type LanguageCode  = 'fa' | 'en' | 'auto';
+export type LanguageCode  = 'fa' | 'en' | 'zh' | 'auto';
+export type SummaryLanguage = 'zh' | 'en' | 'auto';
 
 export type EmailIntent =
   | 'action_required'
@@ -184,6 +185,7 @@ export interface Persona {
   tone: ToneType;
   useEmoji: boolean;
   language: LanguageCode;
+  summaryLanguage?: SummaryLanguage;
   autonomyLevel: AutonomyLevel;
   styleSamples?: string[];
   styleDna?: string;

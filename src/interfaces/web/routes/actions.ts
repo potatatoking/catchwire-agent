@@ -22,18 +22,21 @@ async function assertOwnsAccount(accountId: string, userId: string): Promise<boo
   return (rowCount ?? 0) > 0;
 }
 
-async function resolveAccountId(emailId: string, hint?: string): Promise<string> {
-  if (hint) return hint;
+async function resolveAccountId(emailId: string, userId: string): Promise<string | undefined> {
   const { rows } = await getPool().query(
-    'SELECT account_id FROM email_log WHERE id = $1', [emailId]
+    `SELECT el.account_id FROM email_log el
+     JOIN email_accounts ea ON ea.id = el.account_id
+     WHERE el.id = $1 AND ea.user_id = $2`,
+    [emailId, userId],
   );
-  return rows[0]?.account_id ?? 'unknown';
+  return rows[0]?.account_id;
 }
 
 router.post('/actions/send', async (req, res) => {
-  const { emailId, accountId } = req.body as { emailId: string; accountId?: string };
+  const { emailId } = req.body as { emailId: string };
   try {
-    const aid = await resolveAccountId(emailId, accountId);
+    const aid = await resolveAccountId(emailId, (req as any).user?.sub);
+    if (!aid) { res.status(404).json({ error: 'Email not found' }); return; }
     await FeedbackRepo.insert({
       emailLogId: emailId, accountId: aid,
       prediction: {} as any, userAction: 'sent_as_is', wasCorrect: true, createdAt: new Date(),
@@ -48,9 +51,10 @@ router.post('/actions/send', async (req, res) => {
 });
 
 router.post('/actions/ignore', async (req, res) => {
-  const { emailId, accountId } = req.body as { emailId: string; accountId?: string };
+  const { emailId } = req.body as { emailId: string };
   try {
-    const aid = await resolveAccountId(emailId, accountId);
+    const aid = await resolveAccountId(emailId, (req as any).user?.sub);
+    if (!aid) { res.status(404).json({ error: 'Email not found' }); return; }
     await FeedbackRepo.insert({
       emailLogId: emailId, accountId: aid,
       prediction: {} as any, userAction: 'ignored', wasCorrect: undefined, createdAt: new Date(),
@@ -104,6 +108,11 @@ router.patch('/accounts/:id/persona', async (req, res) => {
     if (req.body.tone          != null) patch.tone          = req.body.tone;
     if (req.body.autonomyLevel != null) patch.autonomyLevel = req.body.autonomyLevel;
     if (req.body.language      != null) patch.language      = req.body.language;
+    if (req.body.summaryLanguage != null) {
+      const summaryLanguage = z.enum(['zh', 'en', 'auto']).safeParse(req.body.summaryLanguage);
+      if (!summaryLanguage.success) { res.status(400).json({ error: '不支持的摘要语言' }); return; }
+      patch.summaryLanguage = summaryLanguage.data;
+    }
     if (req.body.useEmoji      != null) patch.useEmoji      = req.body.useEmoji;
     await manager.update(req.params.id, patch);
 

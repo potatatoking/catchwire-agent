@@ -93,8 +93,9 @@ router.post('/accounts/:id/prompts', async (req, res) => {
 
       if (activate) {
         await pool.query(
-          `UPDATE personas SET system_prompt=$1 WHERE account_id=$2`,
-          [system_prompt.trim(), req.params.id]
+          `INSERT INTO personas (account_id, system_prompt) VALUES ($1,$2)
+           ON CONFLICT (account_id) DO UPDATE SET system_prompt=EXCLUDED.system_prompt, updated_at=NOW()`,
+          [req.params.id, system_prompt.trim()]
         );
       }
     }
@@ -220,7 +221,7 @@ router.delete('/accounts/:accountId/prompts/:id', async (req, res) => {
 // ── Regenerate reply with instruction ──────────────────────────────────────
 
 router.post('/emails/:id/regenerate', async (req, res) => {
-  const { instruction, accountId } = req.body as { instruction?: string; accountId?: string };
+  const { instruction } = req.body as { instruction?: string };
   if (!instruction?.trim()) { res.status(400).json({ error: 'instruction is required' }); return; }
 
   const pool = getPool();
@@ -236,7 +237,7 @@ router.post('/emails/:id/regenerate', async (req, res) => {
     );
     if (!emailRows.length) { res.status(404).json({ error: 'Email not found' }); return; }
     const emailRow = emailRows[0];
-    const accId    = accountId ?? emailRow.account_id;
+    const accId    = emailRow.account_id;
 
     const { rows: pRows } = await pool.query(`SELECT * FROM personas WHERE account_id=$1`, [accId]);
     const p = pRows[0];
@@ -244,7 +245,8 @@ router.post('/emails/:id/regenerate', async (req, res) => {
       accountId: accId,
       tone:         p?.tone           ?? 'professional',
       useEmoji:     Boolean(p?.use_emoji),
-      language:     p?.language       ?? 'auto',
+      language:     p?.language       ?? 'zh',
+      summaryLanguage: p?.summary_language ?? 'zh',
       autonomyLevel: p?.autonomy_level ?? 'draft',
       systemPrompt: p?.system_prompt  ?? undefined,
       onboardingDone: false, shadowMode: false,

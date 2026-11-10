@@ -75,41 +75,29 @@ export class AgentTaskRunner {
     const { LLMRouter } = await import('../llm/router.ts');
     const llm = new LLMRouter(this.llmConfig);
 
-    const prompt = `You are an email agent assistant. Parse the user message into a structured task.
+    const prompt = `你是邮件助手。将用户消息解析为结构化任务。
 
-User message: "${command}"
+用户消息：${JSON.stringify(command)}
 
-Return ONLY this JSON:
+只返回以下结构的 JSON，保留字段名和 action 枚举值：
 {
-  "isTask": true or false,
-  "action": one of ["search", "unsubscribe_all", "forward_all", "ignore_all", "summarize", "reply_to_all"],
-  "query": "English description of which emails to match (translate if needed)",
-  "params": {
-    "forwardTo": "email address if forwarding, else null",
-    "replyText": "reply text if replying, else null"
-  },
-  "explanation": "one sentence plan in the same language as the user message"
+  "isTask": true,
+  "action": "search",
+  "query": "用于匹配邮件的英文描述",
+  "params": { "forwardTo": null, "replyText": null },
+  "explanation": "用简体中文写一句执行计划"
 }
 
-Action meanings:
-- search: find and list matching emails (use for "show me", "find", "list", "what are", "which emails")
-- summarize: summarize email content (use for "summarize", "digest", "overview", "خلاصه", "چه هستند")
-- unsubscribe_all: unsubscribe from newsletters
-- forward_all: forward emails to an address
-- ignore_all: mark emails as ignored
-- reply_to_all: send a reply to matching emails
+允许的 action：
+- search：查找或列出符合条件的邮件
+- summarize：总结符合条件的邮件
+- unsubscribe_all：退订简报
+- forward_all：将邮件转发到指定地址
+- ignore_all：将邮件标为忽略
+- reply_to_all：回复符合条件的邮件
 
-Query translation guide (always write query in English):
-- "پاسخ نداده / بی‌پاسخ / بدون پاسخ" → "unanswered emails"
-- "فوری / مهم" → "high priority emails"
-- "فاکتور / پرداخت" → "invoice payment emails"
-- "خبرنامه / تبلیغ" → "newsletter marketing emails"
-- "جلسه / قرار ملاقات" → "meeting request emails"
-- "همه / آخرین" → "all recent emails"
-
-Set isTask=false ONLY for: greetings, "what can you do", pure chat with no email intent.
-Set isTask=true for ANY question or command about emails.
-Only return the JSON object, no extra text.`;
+query 使用英文描述，例如：未回复邮件用 unanswered emails，重要邮件用 high priority emails，账单用 invoice payment emails。发件人名称和地址保持原样。
+只有用户明确要求修改邮件时才选择修改类任务。需要转发时填写 forwardTo，需要回复时填写 replyText。打招呼或一般闲聊时设 isTask 为 false。`;
 
     const raw = await llm.complete(prompt, { maxTokens: 300, temperature: 0.1 });
     const m   = raw.match(/\{[\s\S]*\}/);

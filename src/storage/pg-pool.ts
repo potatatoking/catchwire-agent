@@ -300,6 +300,10 @@ export async function initPgSchema(): Promise<void> {
 
     '012_email_image_previews': `
       ALTER TABLE email_log ADD COLUMN IF NOT EXISTS body_html TEXT;`,
+
+    '013_persona_summary_language': `
+      ALTER TABLE personas ADD COLUMN IF NOT EXISTS summary_language TEXT NOT NULL DEFAULT 'zh';
+      ALTER TABLE personas ALTER COLUMN language SET DEFAULT 'zh';`,
   };
 
   for (const [name, sql] of Object.entries(migrations)) {

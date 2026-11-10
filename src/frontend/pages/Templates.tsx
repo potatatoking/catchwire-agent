@@ -22,17 +22,11 @@ const INTENTS: Array<{ id: string; label: string; icon: string; color: string; h
 
 // ── Default global prompt ───────────────────────────────────────────────────
 
-const DEFAULT_GLOBAL = `You are a professional email assistant.
+const DEFAULT_GLOBAL = `你是一名专业的邮件助手。
 
-Your job:
-1. Analyze the incoming email (priority, intent, sentiment)
-2. Draft 2-3 clear, ready-to-send reply options
-3. Keep replies concise and appropriate for the context
+请识别邮件的优先级、意图和待办事项，按设置的摘要语言提供简洁摘要，并起草清楚、得体的回复。
 
-General rules:
-- Never make promises or commitments about pricing, timelines, or company policy
-- Always be respectful even if the sender is rude
-- When unsure, draft a clarifying question rather than guessing`;
+不要猜测价格、时间或政策，也不要擅自承诺。信息不足时，写出需要澄清的问题。`;
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -470,12 +464,12 @@ export function Templates() {
 
 function getIntentPlaceholder(intentId: string): string {
   const EXAMPLES: Record<string, string> = {
-    payment:         `- Always acknowledge the invoice number and amount\n- If overdue, apologize and provide payment ETA\n- Offer to send payment confirmation once processed`,
-    complaint:       `- Start with genuine empathy, never be defensive\n- Acknowledge the issue clearly before offering a solution\n- Always provide a concrete next step or resolution timeline`,
-    meeting_request: `- Offer 2-3 alternative time slots when accepting\n- Always confirm timezone when scheduling international calls\n- Keep confirmation replies brief`,
-    follow_up:       `- Be brief — the sender just needs a status update\n- Always give a specific date/ETA, not vague "soon"\n- If blocked, explain why clearly`,
-    partnership:     `- Express genuine interest but avoid over-committing\n- Always ask 1-2 clarifying questions about scope/timeline\n- End with a clear next step (call, proposal, etc.)`,
-    hiring:          `- Be warm and professional\n- For applications: acknowledge receipt, give clear timeline\n- For interview requests: confirm details (date, format, who attends)`,
+    payment: '核对发票编号、金额和付款期限。没有确认的信息不要承诺。',
+    complaint: '先确认对方遇到的问题，再说明可行的下一步。',
+    meeting_request: '确认日期、时区和地点。需要改期时提供可选时间。',
+    follow_up: '简要说明进展、下一步和已确认的时间。',
+    partnership: '确认合作范围和时间，提出一个明确的下一步。',
+    hiring: '礼貌确认收到材料，并核对面试时间、方式和参加人员。',
   };
   return EXAMPLES[intentId] ?? `为「${intentId}」类邮件添加规则…`;
 }

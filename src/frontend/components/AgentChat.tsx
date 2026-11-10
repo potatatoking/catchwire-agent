@@ -34,7 +34,7 @@ function MarkdownText({ text }: { text: string }) {
 export function AgentChat({ open, onClose }: { open: boolean; onClose: () => void }) {
   const messages    = useSignal<ChatMessage[]>([{
     id: 'welcome', role: 'assistant',
-    content: "Hi! I'm your email agent. Ask me anything or give me a task:\n• *\"Find all emails from Alex\"*\n• *\"Unsubscribe all newsletters\"*\n• *\"Summarize my invoices\"*\n• *\"Forward emails from Sarah to bob@co.com\"*",
+    content: '你好，我是你的邮件助手。你可以问我今天有哪些重要邮件，或让我查找某位发件人的邮件。',
   }]);
   const input       = useSignal('');
   const loading     = useSignal(false);
@@ -113,7 +113,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
     if (!accountId) return;
 
     loading.value = true;
-    messages.value = [...messages.value, { id: uid(), role: 'assistant', content: '⚙️ Working on it…', pending: true }];
+    messages.value = [...messages.value, { id: uid(), role: 'assistant', content: '正在处理…', pending: true }];
 
     try {
       const data = await api.chat.execute(accountId, task);
@@ -124,7 +124,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
     } catch {
       messages.value = [
         ...messages.value.slice(0, -1),
-        { id: uid(), role: 'assistant', content: '❌ Execution failed. Please try again.' },
+        { id: uid(), role: 'assistant', content: '执行失败，请稍后重试。' },
       ];
     } finally {
       loading.value = false;
@@ -173,7 +173,7 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
                 <div class="chat-confirm-btns">
                   <button class="chat-confirm-yes" onClick={() => confirmTask(msg.task)}>
                     <span class="material-symbols-rounded" style="font-size:15px">check</span>
-                    Yes, do it
+                    确认执行
                   </button>
                   <button class="chat-confirm-no" onClick={() => {
                     messages.value = [...messages.value, { id: uid(), role: 'assistant', content: '已取消。' }];

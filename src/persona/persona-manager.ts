@@ -37,7 +37,8 @@ export class PersonaManager {
       accountId,
       tone:           row.tone            ?? 'professional',
       useEmoji:       Boolean(row.use_emoji),
-      language:       row.language        ?? 'auto',
+      language:       row.language        ?? 'zh',
+      summaryLanguage: row.summary_language ?? 'zh',
       autonomyLevel:  row.autonomy_level  ?? 'draft',
       styleDna:       row.style_dna       ?? undefined,
       systemPrompt:   row.system_prompt   ?? undefined,
@@ -47,11 +48,12 @@ export class PersonaManager {
     };
   }
 
-  async update(accountId: string, patch: Partial<Pick<Persona, 'tone' | 'useEmoji' | 'language' | 'autonomyLevel' | 'styleDna' | 'systemPrompt' | 'onboardingDone' | 'shadowMode'>>): Promise<void> {
+  async update(accountId: string, patch: Partial<Pick<Persona, 'tone' | 'useEmoji' | 'language' | 'summaryLanguage' | 'autonomyLevel' | 'styleDna' | 'systemPrompt' | 'onboardingDone' | 'shadowMode'>>): Promise<void> {
     const fields = Object.entries({
       tone:            patch.tone,
       use_emoji:       patch.useEmoji,
       language:        patch.language,
+      summary_language: patch.summaryLanguage,
       autonomy_level:  patch.autonomyLevel,
       style_dna:       patch.styleDna,
       system_prompt:   patch.systemPrompt,
@@ -97,7 +99,8 @@ export class PersonaManager {
       accountId,
       tone:          'professional',
       useEmoji:      false,
-      language:      'auto',
+      language:      'zh',
+      summaryLanguage: 'zh',
       autonomyLevel: 'draft',
       llmConfig: {
         provider: (process.env.LLM_PROVIDER as any) ?? 'openrouter',

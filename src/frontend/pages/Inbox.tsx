@@ -95,7 +95,7 @@ function ReplyCard({ reply, onSend, onEdit, isSending }: {
 
 // ── Detail Panel ───────────────────────────────────────────────────────────
 
-function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | null; readOnly: boolean; onDone: () => void; onBack?: () => void }) {
+function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone: () => void; onBack?: () => void }) {
   const fromAddress = useSignal('');
   const aliases = useSignal<string[]>([]);
   const mailAccount = accounts.value.find((account) => account.account_id === email?.account_id);
@@ -106,14 +106,14 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
 
   useEffect(() => {
     aliases.value = [];
-    if (readOnly || mailAccount?.provider !== 'imap') return;
+    if (mailAccount?.provider !== 'imap') return;
     let active = true;
     api.accounts.smtp(mailAccount.account_id).then((settings) => {
       if (active) aliases.value = (settings.aliases ?? []).filter((alias) =>
         alias.toLowerCase() !== mailAccount.email_address.toLowerCase());
     }).catch(() => {});
     return () => { active = false; };
-  }, [mailAccount?.account_id, readOnly]);
+  }, [mailAccount?.account_id]);
 
   const editIdx     = useSignal<number | null>(null);
   const editBody    = useSignal('');
@@ -122,18 +122,6 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
   const showBody    = useSignal(false);
   const aiInstruct  = useSignal('');
   const regenerating = useSignal(false);
-
-  // reset state when email changes
-  if (email?.id !== (DetailPane as any)._lastId) {
-    (DetailPane as any)._lastId = email?.id;
-    editIdx.value  = null;
-    editBody.value = '';
-    resultMsg.value = '';
-    sending.value  = false;
-    showBody.value = false;
-    aiInstruct.value = '';
-    regenerating.value = false;
-  }
 
   if (!email) {
     return (
@@ -164,9 +152,9 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
     regenerating.value = true;
     resultMsg.value = '';
     try {
-      const res = await api.emails.regenerate(email.id, aiInstruct.value.trim(), email.account_id);
+      const res = await api.emails.regenerate(email.id, aiInstruct.value.trim());
       // Update local agent_response with new replies
-      (email.agent_response as any).suggestedReplies = res.suggestedReplies;
+      email.agent_response = { ...email.agent_response, suggestedReplies: res.suggestedReplies };
       editBody.value = res.suggestedReplies[0]?.body ?? editBody.value;
       aiInstruct.value = '';
     } catch (e: any) {
@@ -196,7 +184,9 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
       await api.actions.ignore(email.id);
       resultMsg.value = 'ignored';
       onDone();
-    } catch {}
+    } catch (error) {
+      resultMsg.value = 'error:' + (error instanceof Error ? error.message : '无法忽略邮件');
+    }
   };
 
   return (
@@ -281,13 +271,13 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
         )}
 
         {/* Suggested Replies */}
-        {!readOnly && !isDone && mailAccount && aliases.value.length > 0 && (
+        {!isDone && mailAccount && aliases.value.length > 0 && (
           <SenderPicker key={email.id} primary={mailAccount.email_address} aliases={aliases.value}
             selected={fromAddress.value} disabled={sending.value}
             onSelect={(address) => { fromAddress.value = address; }} />
         )}
 
-        {!readOnly && !isDone && replies.length > 0 && editIdx.value === null && (
+        {!isDone && replies.length > 0 && editIdx.value === null && (
           <div class="replies-section">
             <div class="replies-label">建议回复</div>
             {replies.map((r, i) => (
@@ -303,7 +293,7 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
         )}
 
         {/* Edit mode */}
-        {!readOnly && editIdx.value !== null && (
+        {editIdx.value !== null && (
           <div style="margin-bottom:20px">
             <div class="replies-label">编辑回复</div>
 
@@ -348,7 +338,7 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
         )}
 
         {/* No replies empty state */}
-        {!readOnly && !isDone && replies.length === 0 && (
+        {!isDone && replies.length === 0 && (
           <div style="padding:16px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:16px;font-size:13px;color:var(--text-muted)">
             暂无建议回复。
           </div>
@@ -356,7 +346,7 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
       </div>
 
       {/* Bottom action bar */}
-      {!readOnly && !isDone && (
+      {!isDone && (
         <div class="action-bar">
           {replies.length > 0 && editIdx.value === null && (
             <button class="btn btn-primary" onClick={() => sendReply(replies[0].body)} disabled={sending.value}>
@@ -370,7 +360,7 @@ function DetailPane({ email, readOnly, onDone, onBack }: { email: EmailItem | nu
               editBody.value = replies[0]?.body ?? '';
             }}>
               <span class="material-symbols-rounded">edit</span>
-              Edit & Send
+              编辑并发送
             </button>
           )}
           <div style="flex:1" />
@@ -633,8 +623,8 @@ export function Inbox() {
       {/* ── Right: detail pane ── */}
       <div class={`detail-pane-wrapper${showDetail.value ? ' visible' : ''}`}>
         <DetailPane
+          key={selectedEmail?.id ?? 'empty'}
           email={selectedEmail}
-          readOnly={combinedMailbox.value}
           onBack={() => { showDetail.value = false; }}
           onDone={() => {
             showDetail.value = false;

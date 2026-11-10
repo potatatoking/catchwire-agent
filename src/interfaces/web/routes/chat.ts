@@ -11,17 +11,6 @@ import { isDemoMode } from '../middleware/demo.middleware.ts';
 
 const router = Router();
 
-/** Detect the primary language of a message by script presence. */
-function detectLanguage(text: string): string {
-  if (/[؀-ۿ]/.test(text)) return 'Persian/Farsi';
-  if (/[一-鿿]/.test(text)) return 'Chinese';
-  if (/[぀-ヿ]/.test(text)) return 'Japanese';
-  if (/[가-힯]/.test(text)) return 'Korean';
-  if (/[Ѐ-ӿ]/.test(text)) return 'Russian';
-  if (/[Ͱ-Ͽ]/.test(text)) return 'Greek';
-  return 'en';
-}
-
 async function assertOwnsAccount(accountId: string, userId: string): Promise<boolean> {
   const { rowCount } = await getPool().query(
     'SELECT 1 FROM email_accounts WHERE id = $1 AND user_id = $2',
@@ -56,11 +45,7 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
     const persona  = await personas.get(accountId);
     const llmConfig = persona.llmConfig;
 
-    // Detect user language from message content
-    const userLanguage = detectLanguage(message);
-    const langInstruction = userLanguage !== 'en'
-      ? `IMPORTANT: Always respond in the same language the user is writing in (${userLanguage}). `
-      : '';
+    const userLanguage = 'Chinese';
 
     const { AgentTaskRunner } = await import('../../../services/agent-task-runner.ts');
     const runner = new AgentTaskRunner(llmConfig);
@@ -71,9 +56,7 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
     // Block write actions in demo mode
     const WRITE_ACTIONS = ['unsubscribe_all', 'forward_all', 'ignore_all', 'reply_to_all'];
     if (task?.isTask && WRITE_ACTIONS.includes(task.action) && isDemoMode()) {
-      const demoMsg = userLanguage === 'Persian/Farsi'
-        ? '⚠️ در حالت دمو، عملیات تغییر غیرفعال است. برای استفاده کامل پروژه را Fork کنید.'
-        : '⚠️ Demo mode is active — write operations are disabled. Fork the project to self-host your own instance.';
+      const demoMsg = '演示模式下无法修改邮件。';
       res.json({ reply: demoMsg, action: 'demo_blocked' });
       return;
     }
@@ -84,11 +67,9 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
         const result = await runner.execute(accountId, task, 10, userLanguage);
         let reply: string;
         if (result.processed === 0) {
-          reply = userLanguage === 'Persian/Farsi'
-            ? 'ایمیلی با این مشخصات پیدا نشد. کلمات دیگری را امتحان کنید.'
-            : "I didn't find any emails matching your query. Try different keywords.";
+          reply = '没有找到符合条件的邮件，请换个关键词试试。';
         } else {
-          reply = `Found **${result.processed} email(s)**:\n\n${result.details.slice(0, 8).join('\n')}`;
+          reply = `找到 **${result.processed} 封邮件**：\n\n${result.details.slice(0, 8).join('\n')}`;
         }
         res.json({ reply, action: 'search', result });
         return;
@@ -103,8 +84,8 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
         const previewLines = preview.slice(0, 4).map(e =>
           `• ${e.sender_name || e.from_address} — ${e.subject?.slice(0, 50) ?? ''}`
         );
-        const proceed = userLanguage === 'Persian/Farsi' ? 'آیا ادامه دهم؟' : 'Shall I proceed?';
-        const found   = userLanguage === 'Persian/Farsi' ? `${count} ایمیل یافت شد:` : `I found **${count}** email(s) matching:`;
+        const proceed = '要继续执行吗？';
+        const found   = `找到 **${count} 封**符合条件的邮件：`;
         const reply   = `${task.explanation}\n\n${found}\n${previewLines.join('\n')}${count > 4 ? `\n…and more` : ''}\n\n${proceed}`;
         res.json({ reply, action: 'confirm', task, previewCount: count });
         return;
@@ -113,9 +94,7 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
       // Summarize: execute directly
       if (task.action === 'summarize') {
         const result = await runner.execute(accountId, task, 20, userLanguage);
-        const fallback = userLanguage === 'Persian/Farsi'
-          ? 'ایمیلی برای خلاصه‌سازی پیدا نشد.'
-          : 'No emails found to summarize.';
+        const fallback = '没有找到可以总结的邮件。';
         res.json({ reply: result.summary || fallback, action: 'summarize', result });
         return;
       }
@@ -134,7 +113,7 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
     );
 
     const contextBlock = recentEmails.length
-      ? `Recent emails:\n${recentEmails.map(e =>
+      ? `最近的邮件：\n${recentEmails.map(e =>
           `- From ${e.sender_name || e.from_address}: "${e.subject}" (${e.intent}, ${e.priority}): ${e.summary ?? ''}`
         ).join('\n')}`
       : '';
@@ -143,15 +122,15 @@ router.post('/chat', rateLimitMiddleware('llm_requests'), async (req, res) => {
       `${m.role === 'user' ? 'User' : 'Agent'}: ${m.content}`
     ).join('\n');
 
-    const prompt = `${langInstruction}You are an intelligent email agent assistant. Help the user manage their inbox.
+    const prompt = `你是一名邮件助手。请用简体中文协助用户管理收件箱。
 ${contextBlock}
-${conversationHistory ? `\nConversation so far:\n${conversationHistory}` : ''}
+${conversationHistory ? `\n对话记录：\n${conversationHistory}` : ''}
 
 User: ${message}
 
-Respond conversationally and helpfully. If asked about emails, reference the context above.
-If the user wants to take action (send, forward, unsubscribe, search), explain that they can type natural language commands like "unsubscribe all newsletters" or "find emails from Alex".
-Keep replies concise (2-4 sentences).`;
+用自然、清晰的中文回答。用户问及邮件时，请参考上面的上下文。
+用户想执行发信、转发、退订或搜索时，可以告诉他们如何用自然语言发出指令。不要声称已执行尚未执行的操作。
+回答保持简短，通常两到四句话。`;
 
     let reply = (await llm.complete(prompt, { maxTokens: 300, temperature: 0.7, responseFormat: 'text' })).trim();
     // Strip JSON wrapper if LLM returns {"response":"..."} or {"reply":"..."}
@@ -191,7 +170,7 @@ router.post('/chat/execute', rateLimitMiddleware('llm_requests'), async (req, re
 
     const { AgentTaskRunner } = await import('../../../services/agent-task-runner.ts');
     const runner = new AgentTaskRunner(persona.llmConfig);
-    const result = await runner.execute(accountId, task, 50);
+    const result = await runner.execute(accountId, task, 50, 'Chinese');
 
     const reply = [
       result.summary,
