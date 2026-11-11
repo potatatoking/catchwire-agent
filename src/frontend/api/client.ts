@@ -251,8 +251,8 @@ export const api = {
   },
 
   emails: {
-    list:   (accountId: string, page = 1) =>
-      req<EmailItem[]>(`/accounts/${accountId}/emails?page=${page}`),
+    list:   (accountId: string, page = 1, sortByDate = false) =>
+      req<EmailItem[]>(`/accounts/${accountId}/emails?page=${page}${sortByDate ? '&sort=recent' : ''}`),
     get:    (id: string) => req<EmailDetail>(`/emails/${id}`),
     reply:  (id: string, body: string, from?: string) =>
       req<{ success: boolean; messageId?: string }>(`/emails/${id}/reply`, {

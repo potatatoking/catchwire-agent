@@ -99,7 +99,7 @@ export const EmailLogRepo = {
 
   async recordAction(id: string, action: string): Promise<void> {
     await getPool().query(
-      `UPDATE email_log SET user_action = $1 WHERE id = $2`, [action, id]
+      `UPDATE email_log SET user_action = $1, user_action_at = NOW() WHERE id = $2`, [action, id]
     );
   },
 };

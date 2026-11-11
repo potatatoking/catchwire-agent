@@ -304,6 +304,21 @@ export async function initPgSchema(): Promise<void> {
     '013_persona_summary_language': `
       ALTER TABLE personas ADD COLUMN IF NOT EXISTS summary_language TEXT NOT NULL DEFAULT 'zh';
       ALTER TABLE personas ALTER COLUMN language SET DEFAULT 'zh';`,
+    '014_email_user_action_at': `
+      ALTER TABLE email_log ADD COLUMN IF NOT EXISTS user_action_at TIMESTAMPTZ;
+      UPDATE email_log AS email
+      SET user_action_at = last_feedback.action_at
+      FROM (
+        SELECT email_log_id, MAX(created_at) AS action_at
+        FROM feedback
+        GROUP BY email_log_id
+      ) AS last_feedback
+      WHERE email.id = last_feedback.email_log_id
+        AND NULLIF(email.user_action, '') IS NOT NULL
+        AND email.user_action_at IS NULL;
+      UPDATE email_log
+      SET user_action_at = NOW()
+      WHERE NULLIF(user_action, '') IS NOT NULL AND user_action_at IS NULL;`,
   };
 
   for (const [name, sql] of Object.entries(migrations)) {

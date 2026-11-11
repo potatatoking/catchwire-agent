@@ -5,7 +5,7 @@ import { Router } from 'express';
 import { imagePreviewHtml, parseMime } from '../../../parser/mime.ts';
 import { getPool } from '../../../storage/pg-pool.ts';
 import { EmailSender } from '../../../services/email-sender.ts';
-import { FeedbackRepo } from '../../../storage/sqlite.adapter.ts';
+import { EmailLogRepo, FeedbackRepo } from '../../../storage/sqlite.adapter.ts';
 import { logger } from '../../../utils/logger.ts';
 
 const router = Router();
@@ -120,9 +120,7 @@ router.post('/emails/:id/reply', async (req, res) => {
       emailLogId: req.params.id, accountId: row.account_id,
       prediction: {} as any, userAction: 'sent_as_is', wasCorrect: true, createdAt: new Date(),
     });
-    await getPool().query(
-      `UPDATE email_log SET user_action = 'replied' WHERE id = $1`, [req.params.id]
-    );
+    await EmailLogRepo.recordAction(req.params.id, 'replied');
 
     logger.info('Reply sent', { emailId: req.params.id });
     res.json({ success: true, messageId: result.messageId });
