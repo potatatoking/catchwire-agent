@@ -490,6 +490,7 @@ export function Inbox() {
   const showDetail  = useSignal(false); // mobile: whether detail pane is visible
 
   const scope = combinedMailbox.value ? 'all' : selectedAccount.value;
+  const sortByDate = scope === 'all' && filter.value === 'all';
   const requestId = useRef(0);
   const error = useSignal('');
 
@@ -498,7 +499,7 @@ export function Inbox() {
     const request = ++requestId.current;
     loading.value = true;
     error.value = '';
-    api.emails.list(scope, p).then((data) => {
+    api.emails.list(scope, p, sortByDate).then((data) => {
       if (request !== requestId.current) return;
       emails.value = p === 1 ? data : [...emails.value, ...data];
       hasMore.value = data.length === 20 && p < 1000;
@@ -518,21 +519,22 @@ export function Inbox() {
     showDetail.value = false;
     loadEmails(1);
     return () => { ++requestId.current; loading.value = false; };
-  }, [scope]);
+  }, [scope, sortByDate]);
 
-  const filtered = emails.value
-    .filter((e) => {
-      if (filter.value === 'all')     return true;
-      if (filter.value === 'pending') return !e.user_action;
-      if (filter.value === 'done')    return Boolean(e.user_action);
-      return e.priority === filter.value;
-    })
-    .sort((a, b) => {
+  const filtered = emails.value.filter((e) => {
+    if (filter.value === 'all')     return true;
+    if (filter.value === 'pending') return !e.user_action;
+    if (filter.value === 'done')    return Boolean(e.user_action);
+    return e.priority === filter.value;
+  });
+  if (!sortByDate) {
+    filtered.sort((a, b) => {
       const pa = PRIORITY_ORDER[a.priority] ?? 9;
       const pb = PRIORITY_ORDER[b.priority] ?? 9;
       if (pa !== pb) return pa - pb;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
+  }
 
   const counts: Record<string, number> = {
     all:      emails.value.length,
@@ -546,10 +548,10 @@ export function Inbox() {
 
   // Auto-select first email whenever the list loads or filter changes
   useEffect(() => {
-    if (selectedId.value === null && filtered.length > 0) {
+    if (selectedId.value === null && !loading.value && filtered.length > 0) {
       selectedId.value = filtered[0].id;
     }
-  }, [emails.value, filter.value]);
+  }, [emails.value, filter.value, loading.value]);
 
   return (
     <div class="inbox-shell">

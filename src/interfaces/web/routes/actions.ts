@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { getPool } from '../../../storage/pg-pool.ts';
-import { FeedbackRepo } from '../../../storage/sqlite.adapter.ts';
+import { EmailLogRepo, FeedbackRepo } from '../../../storage/sqlite.adapter.ts';
 import { logger } from '../../../utils/logger.ts';
 
 const router = Router();
@@ -41,7 +41,7 @@ router.post('/actions/send', async (req, res) => {
       emailLogId: emailId, accountId: aid,
       prediction: {} as any, userAction: 'sent_as_is', wasCorrect: true, createdAt: new Date(),
     });
-    await getPool().query(`UPDATE email_log SET user_action = 'sent_as_is' WHERE id = $1`, [emailId]);
+    await EmailLogRepo.recordAction(emailId, 'sent_as_is');
     logger.info('User sent email as-is', { emailId });
     res.json({ ok: true });
   } catch (err) {
@@ -59,7 +59,7 @@ router.post('/actions/ignore', async (req, res) => {
       emailLogId: emailId, accountId: aid,
       prediction: {} as any, userAction: 'ignored', wasCorrect: undefined, createdAt: new Date(),
     });
-    await getPool().query(`UPDATE email_log SET user_action = 'ignored' WHERE id = $1`, [emailId]);
+    await EmailLogRepo.recordAction(emailId, 'ignored');
     logger.info('User ignored email', { emailId });
     res.json({ ok: true });
   } catch (err) {
