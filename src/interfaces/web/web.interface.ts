@@ -278,11 +278,17 @@ export class WebInterface implements IUserInterface {
       else res.redirect('/agent/inbox');
     });
 
-    // SPA fallback — all /agent/* routes go to the Preact app
+    // Serve the compiled client on direct navigation and refresh.
     const distHtml = resolve('dist/frontend/index.html');
-    const devHtml  = resolve('index.html');
-    this.app.use((_req, res) => {
-      res.sendFile(existsSync(distHtml) ? distHtml : devHtml);
+    this.app.get(['/agent', '/agent/*'], (_req, res) => {
+      if (!existsSync(distHtml)) {
+        res.status(503).type('text').send('前端尚未构建，请先运行 npm run build。开发模式请使用 npm run dev:frontend。');
+        return;
+      }
+      res.sendFile(distHtml);
+    });
+    this.app.use('/api', (_req, res) => {
+      res.status(404).json({ error: '接口不存在' });
     });
   }
 

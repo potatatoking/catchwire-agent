@@ -54,12 +54,14 @@ export class IMAPPoller {
       return;
     }
     if (!config) { this.polling = false; return; }
-    const imap = new Imap({
+    const options: Imap.Config & { socketTimeout: number } = {
       ...config,
+      password: config.password ?? '',
       autotls: 'required',
       connTimeout: 10_000, authTimeout: 10_000, socketTimeout: 30_000,
       tlsOptions: { rejectUnauthorized: true },
-    });
+    };
+    const imap = new Imap(options);
     let processing = false;
     imap.once('close', () => {
       if (!processing) this.polling = false;

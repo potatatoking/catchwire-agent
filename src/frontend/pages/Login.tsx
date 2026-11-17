@@ -1,5 +1,6 @@
 // Modified for Simplified Chinese localization with OpenAI GPT.
 import { h } from 'preact';
+import { useEffect } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { api, setToken } from '../api/client.ts';
 
@@ -14,16 +15,31 @@ export function Login({ onLogin }: Props) {
   const error       = useSignal('');
   const loading     = useSignal(false);
   const isSetup     = useSignal<boolean | null>(null);
+  const setupAttempt = useSignal(0);
 
-  // Check whether initial setup is needed
+  useEffect(() => {
+    let active = true;
+    api.auth.setupStatus().then(({ needsSetup }) => {
+      if (active) isSetup.value = needsSetup;
+    }).catch(() => {
+      if (active) error.value = '无法连接服务，请重试';
+    });
+    return () => { active = false; };
+  }, [setupAttempt.value]);
+
   if (isSetup.value === null) {
-    api.auth.setupStatus()
-      .then(({ needsSetup }) => { isSetup.value = needsSetup; })
-      .catch(() => { isSetup.value = false; });
     return (
       <div class="login-container">
         <div class="login-card">
-          <p>加载中…</p>
+          {error.value ? (
+            <div class="login-form">
+              <p role="alert">{error.value}</p>
+              <button class="login-btn" type="button" onClick={() => {
+                error.value = '';
+                setupAttempt.value += 1;
+              }}>重试</button>
+            </div>
+          ) : <p role="status">加载中…</p>}
         </div>
       </div>
     );
@@ -71,6 +87,7 @@ export function Login({ onLogin }: Props) {
               onInput={(e) => { username.value = (e.target as HTMLInputElement).value; }}
               placeholder="admin"
               autocomplete="username"
+              autoCapitalize="none"
               required
             />
           </div>

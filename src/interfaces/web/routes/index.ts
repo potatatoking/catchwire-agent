@@ -127,6 +127,11 @@ router.get('/accounts/:id/emails', async (req, res) => {
     const requestedPage = Number.parseInt(String(req.query.page ?? '1'), 10) || 1;
     const page = Math.max(1, Math.min(1000, requestedPage));
     const orderByPriority = all && req.query.sort !== 'recent';
+    const filter = req.query.filter ?? 'all';
+    if (filter !== 'all' && filter !== 'pending' && filter !== 'done' && filter !== 'critical' && filter !== 'high') {
+      res.status(400).json({ error: '邮件筛选条件无效' });
+      return;
+    }
     const handledSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const { rows } = await getPool().query(
       `SELECT id, account_id, thread_id, from_address, sender_name, subject,
@@ -135,9 +140,13 @@ router.get('/accounts/:id/emails', async (req, res) => {
        FROM email_log
        WHERE ${all ? 'account_id IN (SELECT id FROM email_accounts WHERE user_id = $1 AND enabled = TRUE)' : 'account_id = $1'}
          AND (NULLIF(user_action, '') IS NULL OR user_action_at IS NULL OR user_action_at > $3)
+         AND ($4 = 'all'
+           OR ($4 = 'pending' AND NULLIF(user_action, '') IS NULL)
+           OR ($4 = 'done' AND NULLIF(user_action, '') IS NOT NULL)
+           OR ($4 IN ('critical', 'high') AND priority = $4))
        ORDER BY ${orderByPriority ? "CASE priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END," : ''}
                 processed_at DESC, id DESC LIMIT 20 OFFSET $2`,
-      [all ? userId : req.params.id, (page - 1) * 20, handledSince]
+      [all ? userId : req.params.id, (page - 1) * 20, handledSince, filter]
     );
     res.json(await Promise.all(rows.map(cleanLegacyDisplay)));
   } catch {

@@ -39,7 +39,7 @@ export function AccountSwitcher() {
   const letter = current.email_address[0].toUpperCase();
 
   return (
-    <div ref={menuRef} style="position:relative">
+    <div ref={menuRef} class="account-switcher">
       {/* Avatar button */}
       <button
         onClick={() => { open.value = !open.value; }}
@@ -58,11 +58,10 @@ export function AccountSwitcher() {
 
       {/* Dropdown */}
       {open.value && (
-        <div style="
-          position:absolute;right:0;top:calc(100% + 8px);
+        <div class="account-switcher-menu" style="
           background:var(--surface);border:1px solid var(--border);
           border-radius:var(--r-md);box-shadow:0 4px 20px rgba(0,0,0,.15);
-          min-width:220px;z-index:200;overflow:hidden;
+          min-width:220px;z-index:200;
         ">
           {/* Current account header */}
           <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface-2)">

@@ -3,7 +3,7 @@ import { SenderPicker } from '../components/SenderPicker.tsx';
 import { MailboxScope } from '../components/MailboxScope.tsx';
 import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { useSignal, computed } from '@preact/signals';
+import { useSignal } from '@preact/signals';
 import { accounts, combinedMailbox, emails, selectedAccount, loading } from '../signals/store.ts';
 import { api } from '../api/client.ts';
 import type { EmailItem } from '../api/client.ts';
@@ -20,11 +20,9 @@ function timeAgo(iso: string): string {
 }
 
 function initials(name?: string, email?: string): string {
-  const src = (name ?? email ?? '?').trim();
-  const parts = src.split(/[\s@]/);
-  return parts.length >= 2
-    ? (parts[0][0] + parts[1][0]).toUpperCase()
-    : src[0].toUpperCase();
+  const src = name?.trim() || email?.trim() || '?';
+  return src.split(/[\s@]+/).filter(Boolean).slice(0, 2)
+    .map(part => part[0]).join('').toUpperCase() || '?';
 }
 
 const AVATAR_COLORS = [
@@ -45,25 +43,24 @@ type Filter = 'all' | 'pending' | 'critical' | 'high' | 'done';
 function EmailRow({ email, selected, source, onClick }: {
   email: EmailItem; selected: boolean; source?: string; onClick: () => void;
 }) {
-  const analysis = email.agent_response as any;
   const isDone   = Boolean(email.user_action);
   return (
-    <div class={`email-row${selected ? ' selected' : ''}`} onClick={onClick}>
+    <button type="button" class={`email-row${selected ? ' selected' : ''}`} onClick={onClick}>
       <span class={`email-row-dot ${email.priority}`} />
-      <div class="email-row-body">
-        <div class="email-row-sender">{email.sender_name || email.from_address}</div>
-        <div class="email-row-subject">{email.subject}</div>
-        {source && <div class="mailbox-source" title={source}>{source}</div>}
-        {email.summary && <div class="email-row-preview">{email.summary}</div>}
-      </div>
-      <div class="email-row-meta">
+      <span class="email-row-body">
+        <span class="email-row-sender">{email.sender_name || email.from_address}</span>
+        <span class="email-row-subject">{email.subject}</span>
+        {source && <span class="mailbox-source" title={source}>{source}</span>}
+        {email.summary && <span class="email-row-preview">{email.summary}</span>}
+      </span>
+      <span class="email-row-meta">
         <span class="email-row-time">{timeAgo(email.created_at)}</span>
         {(email.priority === 'critical' || email.priority === 'high') && !isDone && (
           <span class={`email-row-badge ${email.priority}`}>{email.priority}</span>
         )}
         {isDone && <span class="email-row-badge done">已处理</span>}
-      </div>
-    </div>
+      </span>
+    </button>
   );
 }
 
@@ -118,10 +115,12 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
   const editIdx     = useSignal<number | null>(null);
   const editBody    = useSignal('');
   const sending     = useSignal(false);
+  const ignoring    = useSignal(false);
   const resultMsg   = useSignal('');
   const showBody    = useSignal(false);
   const aiInstruct  = useSignal('');
   const regenerating = useSignal(false);
+  const busy        = sending.value || ignoring.value || regenerating.value;
 
   if (!email) {
     return (
@@ -136,8 +135,8 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
 
   // Back button: visible only on mobile (hidden via CSS on desktop)
   const backBtn = onBack ? (
-    <button class="detail-back-btn btn btn-ghost" onClick={onBack}>
-      <span class="material-symbols-rounded" style="font-size:18px">arrow_back</span>
+    <button class="detail-back-btn btn btn-ghost" aria-label="返回邮件列表" onClick={onBack}>
+      <span class="material-symbols-rounded" aria-hidden="true" style="font-size:18px">arrow_back</span>
     </button>
   ) : null;
 
@@ -165,7 +164,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
   };
 
   const sendReply = async (body: string) => {
-    if (sending.value) return;
+    if (sending.value || ignoring.value || regenerating.value) return;
     sending.value  = true;
     resultMsg.value = '';
     try {
@@ -180,12 +179,17 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
   };
 
   const ignore = async () => {
+    if (ignoring.value || sending.value || regenerating.value) return;
+    ignoring.value = true;
+    resultMsg.value = '';
     try {
       await api.actions.ignore(email.id);
       resultMsg.value = 'ignored';
       onDone();
     } catch (error) {
       resultMsg.value = 'error:' + (error instanceof Error ? error.message : '无法忽略邮件');
+    } finally {
+      ignoring.value = false;
     }
   };
 
@@ -236,13 +240,13 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
 
         {/* Email body (collapsible placeholder — full body via GET /emails/:id) */}
         <div class="email-body-section">
-          <div class="email-body-label" style="cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none"
+          <button type="button" class="email-body-label" aria-expanded={showBody.value}
             onClick={() => { showBody.value = !showBody.value; }}>
             原始邮件
             <span class="material-symbols-rounded" style="font-size:14px">
               {showBody.value ? 'expand_less' : 'expand_more'}
             </span>
-          </div>
+          </button>
           {showBody.value && (
             <FullBody emailId={email.id} />
           )}
@@ -266,7 +270,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
         )}
         {resultMsg.value.startsWith('error:') && (
           <div style="padding:12px 16px;background:var(--c-critical-bg);color:var(--c-critical);border-radius:var(--r-md);margin-bottom:16px;font-size:13px">
-            {resultMsg.value.slice(6)}
+            <span role="alert">{resultMsg.value.slice(6)}</span>
           </div>
         )}
 
@@ -284,7 +288,7 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
               <ReplyCard
                 key={i}
                 reply={r}
-                isSending={sending.value}
+                isSending={busy}
                 onSend={() => sendReply(r.body)}
                 onEdit={() => { editIdx.value = i; editBody.value = r.body; }}
               />
@@ -305,10 +309,10 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
               <div style="display:flex;gap:8px">
                 <input
                   class="md-input"
-                  style="flex:1;height:32px;font-size:12px"
+                  style="flex:1;min-width:0"
                   value={aiInstruct.value}
                   onInput={(e) => { aiInstruct.value = (e.target as HTMLInputElement).value; }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') regenerate(); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.isComposing) regenerate(); }}
                   placeholder="例如，缩短内容、调整语气或翻译成中文…"
                 />
                 <button class="btn btn-primary" style="height:32px;padding:0 12px;font-size:12px"
@@ -327,13 +331,6 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
               value={editBody.value}
               onInput={(e) => { editBody.value = (e.target as HTMLTextAreaElement).value; }}
             />
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-primary" onClick={() => sendReply(editBody.value)} disabled={sending.value || !editBody.value.trim()}>
-                <span class="material-symbols-rounded">send</span>
-                {sending.value ? '发送中…' : '发送回复'}
-              </button>
-              <button class="btn btn-outline" onClick={() => { editIdx.value = null; }}>取消</button>
-            </div>
           </div>
         )}
 
@@ -348,14 +345,23 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
       {/* Bottom action bar */}
       {!isDone && (
         <div class="action-bar">
+          {editIdx.value !== null && (
+            <>
+              <button class="btn btn-primary" onClick={() => sendReply(editBody.value)} disabled={busy || !editBody.value.trim()}>
+                <span class="material-symbols-rounded">send</span>
+                {sending.value ? '发送中…' : '发送回复'}
+              </button>
+              <button class="btn btn-outline" disabled={busy} onClick={() => { editIdx.value = null; }}>取消</button>
+            </>
+          )}
           {replies.length > 0 && editIdx.value === null && (
-            <button class="btn btn-primary" onClick={() => sendReply(replies[0].body)} disabled={sending.value}>
+            <button class="btn btn-primary" onClick={() => sendReply(replies[0].body)} disabled={busy}>
               <span class="material-symbols-rounded">send</span>
               {sending.value ? '发送中…' : `发送：${replies[0].label}`}
             </button>
           )}
           {editIdx.value === null && (
-            <button class="btn btn-outline" onClick={() => {
+            <button class="btn btn-outline" disabled={busy} onClick={() => {
               editIdx.value = 0;
               editBody.value = replies[0]?.body ?? '';
             }}>
@@ -363,10 +369,9 @@ function DetailPane({ email, onDone, onBack }: { email: EmailItem | null; onDone
               编辑并发送
             </button>
           )}
-          <div style="flex:1" />
-          <button class="btn btn-ghost btn-danger" onClick={ignore}>
+          <button class="btn btn-ghost btn-danger" onClick={ignore} disabled={busy}>
             <span class="material-symbols-rounded">block</span>
-            忽略
+            {ignoring.value ? '处理中…' : '忽略'}
           </button>
         </div>
       )}
@@ -392,7 +397,7 @@ function readEmailHtml(html: string) {
   const ignored = new Set(['HEAD', 'IMG', 'SCRIPT', 'STYLE', 'SVG', 'TEMPLATE', 'NOSCRIPT']);
   const parts: Array<{ text: string; href?: string }> = [];
   const append = (text: string, href?: string) => {
-    const previous = parts.at(-1);
+    const previous = parts[parts.length - 1];
     if (!href && previous && !previous.href) previous.text += text;
     else parts.push({ text, href });
   };
@@ -428,7 +433,7 @@ function readEmailHtml(html: string) {
     if (!part.href) part.text = part.text.replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n');
   }
   if (parts[0] && !parts[0].href) parts[0].text = parts[0].text.trimStart();
-  const last = parts.at(-1);
+  const last = parts[parts.length - 1];
   if (last && !last.href) last.text = last.text.trimEnd();
   return { parts: parts.filter(part => part.text), images: [...images.values()] };
 }
@@ -490,7 +495,8 @@ export function Inbox() {
   const showDetail  = useSignal(false); // mobile: whether detail pane is visible
 
   const scope = combinedMailbox.value ? 'all' : selectedAccount.value;
-  const sortByDate = scope === 'all' && filter.value === 'all';
+  const activeFilter = filter.value;
+  const sortByDate = scope === 'all' && activeFilter === 'all';
   const requestId = useRef(0);
   const error = useSignal('');
 
@@ -499,7 +505,7 @@ export function Inbox() {
     const request = ++requestId.current;
     loading.value = true;
     error.value = '';
-    api.emails.list(scope, p, sortByDate).then((data) => {
+    api.emails.list(scope, p, sortByDate, activeFilter).then((data) => {
       if (request !== requestId.current) return;
       emails.value = p === 1 ? data : [...emails.value, ...data];
       hasMore.value = data.length === 20 && p < 1000;
@@ -519,14 +525,9 @@ export function Inbox() {
     showDetail.value = false;
     loadEmails(1);
     return () => { ++requestId.current; loading.value = false; };
-  }, [scope, sortByDate]);
+  }, [scope, activeFilter]);
 
-  const filtered = emails.value.filter((e) => {
-    if (filter.value === 'all')     return true;
-    if (filter.value === 'pending') return !e.user_action;
-    if (filter.value === 'done')    return Boolean(e.user_action);
-    return e.priority === filter.value;
-  });
+  const filtered = [...emails.value];
   if (!sortByDate) {
     filtered.sort((a, b) => {
       const pa = PRIORITY_ORDER[a.priority] ?? 9;
@@ -535,14 +536,6 @@ export function Inbox() {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }
-
-  const counts: Record<string, number> = {
-    all:      emails.value.length,
-    pending:  emails.value.filter((e) => !e.user_action).length,
-    critical: emails.value.filter((e) => e.priority === 'critical').length,
-    high:     emails.value.filter((e) => e.priority === 'high').length,
-    done:     emails.value.filter((e) => Boolean(e.user_action)).length,
-  };
 
   const selectedEmail = filtered.find((e) => e.id === selectedId.value) ?? null;
 
@@ -560,7 +553,7 @@ export function Inbox() {
         <div class="email-list-header">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div class="email-list-title">{combinedMailbox.value ? '统一收件箱' : '邮件'}</div>
-            <button class="btn btn-ghost" style="height:28px;padding:0 8px;font-size:12px"
+            <button class="btn btn-ghost inbox-refresh" type="button" aria-label="刷新邮件"
               onClick={() => loadEmails(1)} disabled={loading.value}>
               <span class="material-symbols-rounded" style="font-size:14px">refresh</span>
             </button>
@@ -571,23 +564,23 @@ export function Inbox() {
               <button
                 key={f}
                 class={`filter-chip${filter.value === f ? ' active' : ''}`}
-                onClick={() => { filter.value = f; selectedId.value = null; /* effect auto-selects first */ }}
+                aria-pressed={activeFilter === f}
+                onClick={() => { filter.value = f; }}
               >
                 {FILTER_LABELS[f]}
-                {counts[f] > 0 && <span class="count">({counts[f]})</span>}
               </button>
             ))}
           </div>
         </div>
 
         <div class="email-list-scroll">
-          {error.value && <p role="alert">{error.value}</p>}
+          {error.value && <p role="alert" class="inbox-error">{error.value}</p>}
           {loading.value && emails.value.length === 0 ? (
             <div class="empty-state" style="padding:32px 16px">
               <span class="material-symbols-rounded" style="font-size:28px">sync</span>
               <p>加载中…</p>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : filtered.length === 0 && !error.value ? (
             <div class="empty-state" style="padding:32px 16px">
               <span class="material-symbols-rounded" style="font-size:28px">
                 {filter.value === 'pending' ? 'check_circle' : 'inbox'}

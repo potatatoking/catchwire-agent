@@ -23,7 +23,7 @@ export function PageInfo({ info }: { info: PageInfoContent }) {
   }, []);
 
   return (
-    <div ref={ref} style="position:relative;display:inline-flex">
+    <div ref={ref} class="page-info">
       <button
         class="icon-btn"
         title="页面说明"
@@ -34,8 +34,7 @@ export function PageInfo({ info }: { info: PageInfoContent }) {
       </button>
 
       {open.value && (
-        <div style={`
-          position:absolute;top:calc(100% + 8px);right:0;
+        <div class="page-info-menu" style={`
           width:280px;background:var(--surface);
           border:1px solid var(--border);border-radius:var(--r-lg);
           box-shadow:0 8px 24px rgba(0,0,0,.12);

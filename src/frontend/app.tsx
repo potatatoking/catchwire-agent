@@ -19,7 +19,7 @@ import { Login }            from './pages/Login.tsx';
 import { EmailTemplates }   from './pages/EmailTemplates.tsx';
 import { Onboarding }       from './pages/Onboarding.tsx';
 import { AgentChat }        from './components/AgentChat.tsx';
-import { accounts, selectedAccount } from './signals/store.ts';
+import { accounts, combinedMailbox, selectedAccount } from './signals/store.ts';
 import { api, getToken, setToken, clearToken } from './api/client.ts';
 import './styles/global.css';
 
@@ -132,6 +132,8 @@ export function App() {
   const path           = useSignal(window.location.pathname);
   const authed         = useSignal(!!getToken());
   const accsLoaded     = useSignal(false);
+  const accountsError  = useSignal('');
+  const accountsAttempt = useSignal(0);
   const showOnboarding = useSignal(false);
   const magicPending   = useSignal(false);
   const isDemo         = useSignal(false);
@@ -161,7 +163,17 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const onLogout = () => { clearToken(); authed.value = false; };
+    const onLogout = () => {
+      clearToken();
+      authed.value = false;
+      accsLoaded.value = false;
+      accountsError.value = '';
+      accounts.value = [];
+      selectedAccount.value = '';
+      combinedMailbox.value = false;
+      navOpen.value = false;
+      chatOpen.value = false;
+    };
     window.addEventListener('auth:logout', onLogout);
     return () => window.removeEventListener('auth:logout', onLogout);
   }, []);
@@ -175,17 +187,24 @@ export function App() {
 
   useEffect(() => {
     if (!authed.value) return;
+    let active = true;
     api.accounts.list().then((data) => {
+      if (!active || !authed.value) return;
       accounts.value = data;
-      if (data.length && !selectedAccount.value) {
-        selectedAccount.value = data[0].account_id;
+      if (!data.some((account) => account.account_id === selectedAccount.value)) {
+        selectedAccount.value = data[0]?.account_id ?? '';
       }
       // Show onboarding if no accounts, or returning from Gmail OAuth (pending key set)
       const pendingOAuth = !!localStorage.getItem('ea_onboarding_account');
       showOnboarding.value = data.length === 0 || pendingOAuth;
       accsLoaded.value = true;
-    }).catch(console.error);
-  }, [authed.value]);
+    }).catch((error: unknown) => {
+      if (active && authed.value) {
+        accountsError.value = error instanceof Error ? error.message : '请稍后重试';
+      }
+    });
+    return () => { active = false; };
+  }, [authed.value, accountsAttempt.value]);
 
   if (magicPending.value) {
     return (
@@ -199,14 +218,30 @@ export function App() {
   if (!authed.value) {
     return <Login onLogin={() => {
       authed.value = true;
-      if (path.value.includes('login') || path.value === '/agent' || path.value === '/agent/' || path.value === '/') {
-         path.value = '/agent/inbox';
+      if (path.value === '/agent/login' || path.value === '/') {
+        window.history.replaceState(null, '', '/agent/inbox');
+        path.value = '/agent/inbox';
       }
     }} />;
   }
 
-  // While loading accounts, show nothing (avoids flash)
-  if (!accsLoaded.value) return null;
+  if (!accsLoaded.value) {
+    return (
+      <div class="login-container">
+        <div class="login-card">
+          {accountsError.value ? (
+            <div class="login-form">
+              <p role="alert">无法加载邮箱：{accountsError.value}</p>
+              <button class="login-btn" type="button" onClick={() => {
+                accountsError.value = '';
+                accountsAttempt.value += 1;
+              }}>重试</button>
+            </div>
+          ) : <p role="status">正在加载邮箱…</p>}
+        </div>
+      </div>
+    );
+  }
 
   if (showOnboarding.value) {
     return (
@@ -216,7 +251,7 @@ export function App() {
     );
   }
 
-  const isInbox = path.value === '/agent/inbox' || path.value === '/agent' || path.value === '/agent/';
+  const isInbox = ['/agent/inbox', '/agent', '/agent/', '/agent/login'].includes(path.value);
 
   return (
     <LocationProvider>
@@ -251,6 +286,7 @@ export function App() {
               <Route path="/agent"           component={Inbox}            />
               <Route path="/agent/"          component={Inbox}            />
               <Route path="/agent/inbox"     component={Inbox}            />
+              <Route path="/agent/login"     component={Inbox}            />
               <Route path="/agent/threads"    component={Threads}          />
               <Route path="/agent/analytics"  component={Analytics}        />
               <Route path="/agent/email-templates" component={EmailTemplates}  />

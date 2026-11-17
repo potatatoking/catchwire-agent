@@ -61,10 +61,11 @@ export function outlookXoauth2(email: string, accessToken: string): string {
 
 export async function verifyOutlookInbox(email: string, accessToken: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const imap = new Imap({
-      host: outlookImapHost, port: 993, user: email, tls: true,
+    const options: Imap.Config & { socketTimeout: number } = {
+      host: outlookImapHost, port: 993, user: email, password: '', tls: true,
       xoauth2: outlookXoauth2(email, accessToken), connTimeout: 10_000, authTimeout: 10_000, socketTimeout: 12_000,
-    });
+    };
+    const imap = new Imap(options);
     imap.once('error', reject);
     imap.once('ready', () => imap.openBox('INBOX', true, (error) => {
       imap.end();

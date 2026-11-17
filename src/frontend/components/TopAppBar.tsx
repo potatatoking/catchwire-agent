@@ -22,7 +22,7 @@ export function TopAppBar({
       <AccountSwitcher />
       {info && <PageInfo info={info} />}
       <button class="icon-btn" title="刷新" onClick={() => window.location.reload()}>
-        <span class="material-symbols-rounded">refresh</span>
+        <span class="material-symbols-rounded" aria-hidden="true">refresh</span>
       </button>
       {onChatToggle && (
         <button

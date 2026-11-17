@@ -59,9 +59,11 @@ export function AgentChat({ open, onClose }: { open: boolean; onClose: () => voi
     fit();
     viewport.addEventListener('resize', fit);
     viewport.addEventListener('scroll', fit);
+    window.addEventListener('resize', fit);
     return () => {
       viewport.removeEventListener('resize', fit);
       viewport.removeEventListener('scroll', fit);
+      window.removeEventListener('resize', fit);
       panel.style.removeProperty('--chat-viewport-height');
       panel.style.removeProperty('--chat-viewport-top');
     };
